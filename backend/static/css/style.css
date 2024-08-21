@@ -1,3 +1,4 @@
+/* Reset and base styles */
 * {
   margin: 0;
   padding: 0;
@@ -49,10 +50,12 @@ li {
   margin: 0 auto;
 }
 
+/* Header styles */
 header .header_block .logo {
   margin-top: 83px;
   text-align: center;
 }
+
 header .header_block .title_header h1 {
   font-family: Inter;
   font-size: 40px;
@@ -62,13 +65,16 @@ header .header_block .title_header h1 {
   color: #000000;
   margin-top: 74px;
 }
+
 header .header_block .title_header h1 span {
   color: #5FB248;
 }
 
+/* File upload styles */
 .file_upload {
   margin-bottom: 134px;
 }
+
 .file_upload .upload-container {
   text-align: center;
   border: 8px dashed #ccc;
@@ -88,13 +94,16 @@ header .header_block .title_header h1 span {
   margin-right: 15px;
   transition: 0.3s ease all;
 }
+
 .file_upload .upload-container.selected {
   border: 8px dashed green;
 }
+
 .file_upload .upload-container img {
   width: 157px;
   margin-bottom: 46px;
 }
+
 .file_upload .upload-container h2 {
   font-family: Inter;
   font-size: 36px;
@@ -107,6 +116,7 @@ header .header_block .title_header h1 span {
   justify-content: center;
   margin-bottom: 46px;
 }
+
 .file_upload .upload-container p {
   font-family: Inter;
   font-size: 24px;
@@ -115,6 +125,7 @@ header .header_block .title_header h1 span {
   text-align: center;
   margin-right: 10px;
 }
+
 .file_upload .upload-container button {
   font-family: Inter;
   font-size: 24px;
@@ -128,9 +139,11 @@ header .header_block .title_header h1 span {
   color: #5FB248;
   cursor: pointer;
 }
+
 .file_upload .upload-container button:hover {
   background-color: #9edc9e;
 }
+
 .file_upload .info_upload p {
   font-family: Inter;
   font-size: 24px;
@@ -139,14 +152,17 @@ header .header_block .title_header h1 span {
   text-align: center;
   color: #909090;
 }
+
 .file_upload .info_upload p span {
   font-weight: 700;
   opacity: 0.5;
 }
 
+/* History file styles */
 .history_file {
   margin-bottom: 105px;
 }
+
 .history_file .title_history h2 {
   font-family: Inter;
   font-size: 40px;
@@ -156,6 +172,7 @@ header .header_block .title_header h1 span {
   margin-bottom: 44px;
   color: #000000;
 }
+
 .history_file .table_history {
   background-color: #FFFFFF;
   border-radius: 45px;
@@ -164,36 +181,36 @@ header .header_block .title_header h1 span {
   padding-right: 40px;
   padding-bottom: 45px;
 }
+
 .history_file .table_history .document-table {
   width: 100%;
   border-collapse: collapse;
   margin: 20px 0;
 }
+
 .history_file .table_history .document-table thead tr {
   border-top-left-radius: 45px;
 }
-.history_file .table_history .document-table th, .history_file .table_history .document-table td {
+
+.history_file .table_history .document-table th,
+.history_file .table_history .document-table td {
   padding: 15px;
-  text-align: left;
   font-family: Inter;
   font-size: 24px;
   font-weight: 400;
   line-height: 29.05px;
   text-align: left;
-  padding-bottom: 19px;
 }
+
 .history_file .table_history .document-table th {
-  font-family: Inter;
-  font-size: 24px;
   font-weight: 700;
-  line-height: 29.05px;
-  text-align: left;
   color: #000;
-  padding-top: 0;
 }
+
 .history_file .table_history .document-table tr:nth-child(even) {
   background-color: #FFFFFF;
 }
+
 .history_file .table_history .download-btn {
   font-family: Inter;
   font-size: 24px;
@@ -207,10 +224,12 @@ header .header_block .title_header h1 span {
   border: none;
   cursor: pointer;
 }
+
 .history_file .table_history .download-btn:hover {
   background-color: #b0e9d3;
 }
 
+/* Upload container additional styles */
 .upload-container.green-border {
   border-color: green;
 }
@@ -218,7 +237,7 @@ header .header_block .title_header h1 span {
 .upload-icon {
   width: 50px;
   height: 50px;
-  background: url("upload-icon.png") no-repeat center center;
+  background: url('upload-icon.png') no-repeat center center;
   background-size: contain;
   margin-bottom: 10px;
 }
@@ -231,13 +250,16 @@ header .header_block .title_header h1 span {
   color: #00cc66;
 }
 
+/* File uploaded styles */
 .file_uploded {
   margin-top: 63px;
   margin-bottom: 44px;
 }
+
 .file_uploded .info_upload {
   margin-bottom: 134px;
 }
+
 .file_uploded .info_upload p {
   font-family: Inter;
   font-size: 24px;
@@ -246,37 +268,43 @@ header .header_block .title_header h1 span {
   text-align: center;
   margin-top: 44px;
 }
+
 .file_uploded .info_upload p span {
   font-weight: 700;
   opacity: 0.5;
 }
+
 .file_uploded .block_uploded {
   background-color: #FFFFFF;
   padding: 60px 0 70px 0;
   border-radius: 45px;
 }
+
 .file_uploded .block_uploded .img_done {
   text-align: center;
   margin-bottom: 34px;
 }
+
 .file_uploded .block_uploded .title_uploded {
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
+
 .file_uploded .block_uploded .title_uploded h2 {
   font-family: Inter;
   font-size: 36px;
   font-weight: 700;
   line-height: 43.57px;
-  text-align: center;
   color: #000;
   margin-bottom: 47px;
 }
+
 .file_uploded .block_uploded .title_uploded .done_text {
   margin-bottom: 0;
 }
+
 .file_uploded .block_uploded .title_uploded p {
   font-family: Inter;
   font-size: 24px;
@@ -291,37 +319,41 @@ header .header_block .title_header h1 span {
   margin-top: 17px;
   margin-bottom: 63px;
 }
+
 .file_uploded .block_uploded .block_info_uploded {
   display: flex;
   align-items: center;
   justify-content: center;
 }
+
 .file_uploded .block_uploded .block_info_uploded .info_item {
   background: #F7F7F7;
   border-radius: 45px;
   padding: 30px 44px;
   width: 788px;
 }
+
 .file_uploded .block_uploded .block_info_uploded .info_item p {
   font-family: Inter;
   font-size: 24px;
   font-weight: 400;
   line-height: 29.05px;
-  text-align: center;
-  color: #000;
   text-align: left;
   display: flex;
   align-items: center;
 }
+
 .file_uploded .block_uploded .block_info_uploded .info_item p img {
   margin-right: 20px;
 }
+
 .file_uploded .block_uploded .select_option {
   display: flex;
   justify-content: center;
   margin-top: 34px;
   align-items: center;
 }
+
 .file_uploded .block_uploded .select_option p {
   font-family: Inter;
   font-size: 24px;
@@ -330,6 +362,7 @@ header .header_block .title_header h1 span {
   text-align: center;
   margin-right: 75px;
 }
+
 .file_uploded .block_uploded .select_option select {
   width: 388px;
   height: 60px;
@@ -342,14 +375,13 @@ header .header_block .title_header h1 span {
   border-radius: 50px;
   border: none;
   outline: none;
-  -webkit-appearance: none;
-     -moz-appearance: none;
-          appearance: none;
+  appearance: none;
   background-image: url(../img/Chevron.svg);
   background-repeat: no-repeat;
   background-position: calc(100% - 20px);
   padding-left: 10px;
 }
+
 .file_uploded .block_uploded .select_option select option {
   font-family: Inter;
   font-size: 24px;
@@ -357,12 +389,14 @@ header .header_block .title_header h1 span {
   line-height: 29.05px;
   text-align: center;
 }
+
 .file_uploded .block_uploded .btn_file_uploded {
   display: flex;
   align-items: center;
   margin-top: 33px;
   justify-content: center;
 }
+
 .file_uploded .block_uploded .btn_file_uploded button {
   font-family: Inter;
   font-size: 24px;
@@ -377,6 +411,7 @@ header .header_block .title_header h1 span {
   cursor: pointer;
   margin-right: 31px;
 }
+
 .file_uploded .block_uploded .btn_file_uploded a {
   font-family: Inter;
   font-size: 24px;
@@ -386,11 +421,7 @@ header .header_block .title_header h1 span {
   color: #000;
 }
 
-.upload-container.selected {
-  border: 3px solid #5FB248; /* Green border color */
-  border-radius: 15px; /* Optional: to match the border-radius of other elements */
-}
-
+/* Translating styles */
 .transliting .transliting_block {
   background: #FFFFFF;
   border-radius: 45px;
@@ -398,12 +429,14 @@ header .header_block .title_header h1 span {
   margin-bottom: 40px;
   margin-top: 63px;
 }
+
 .transliting .transliting_block .title {
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
+
 .transliting .transliting_block .title h2 {
   font-family: Inter;
   font-size: 36px;
@@ -413,11 +446,13 @@ header .header_block .title_header h1 span {
   color: #000;
   margin-bottom: 107px;
 }
+
 .transliting .transliting_block .block_translited {
   display: flex;
   align-items: center;
   justify-content: center;
 }
+
 .transliting .transliting_block .block_translited .all_file {
   background: #F7F7F7;
   border-radius: 45px;
@@ -426,6 +461,7 @@ header .header_block .title_header h1 span {
   width: 788px;
   height: 104px;
 }
+
 .transliting .transliting_block .block_translited .all_file .pdf_file {
   display: flex;
   align-items: center;
@@ -433,6 +469,7 @@ header .header_block .title_header h1 span {
   padding: 30px 155px 30px 44px;
   border-radius: 44px;
 }
+
 .transliting .transliting_block .block_translited .all_file .pdf_file p {
   font-family: Inter;
   font-size: 24px;
@@ -443,9 +480,11 @@ header .header_block .title_header h1 span {
   display: flex;
   align-items: center;
 }
+
 .transliting .transliting_block .block_translited .all_file .pdf_file p img {
   margin-right: 20px;
 }
+
 .transliting .transliting_block .block_translited .all_file .page_pdf h4 {
   font-family: Inter;
   font-size: 24px;
@@ -455,13 +494,16 @@ header .header_block .title_header h1 span {
   color: #000;
   padding-left: 184px;
 }
+
 .transliting .transliting_block .block_translited .all_file .page_pdf h4 span {
   font-weight: 700;
 }
+
 .transliting .transliting_block .btn_cancel {
   margin-top: 120px;
   text-align: center;
 }
+
 .transliting .transliting_block .btn_cancel button {
   font-family: Inter;
   font-size: 24px;
@@ -472,9 +514,11 @@ header .header_block .title_header h1 span {
   text-align: center;
   cursor: pointer;
 }
+
 .transliting .info_upload {
   margin-bottom: 134px;
 }
+
 .transliting .info_upload p {
   font-family: Inter;
   font-size: 24px;
@@ -483,11 +527,13 @@ header .header_block .title_header h1 span {
   text-align: center;
   margin-top: 44px;
 }
+
 .transliting .info_upload p span {
   font-weight: 700;
   opacity: 0.5;
 }
 
+/* Responsive styles */
 @media (max-width: 800px) {
   header .header_block .title_header h1 {
     font-size: 24px;
@@ -495,141 +541,168 @@ header .header_block .title_header h1 span {
     line-height: 31.41px;
     margin-top: 40px;
   }
+
   .file_uploded .block_uploded {
-    background-color: #FFFFFF;
     padding: 44px 0 61px 0;
     border-radius: 45px;
     margin-left: 10px;
     margin-right: 10px;
   }
+
   .container {
     padding: 0 10px;
   }
+
   .file_uploded .block_uploded .title_uploded h2 {
     font-size: 30px;
     margin-left: 10px;
     margin-right: 10px;
   }
+
   .file_uploded .block_uploded .title_uploded p {
     width: auto;
     margin-left: 10px;
     margin-right: 10px;
   }
+
   .file_uploded .block_uploded .btn_file_uploded {
     flex-direction: column;
   }
+
   .file_uploded .block_uploded .btn_file_uploded button {
     margin-right: 0;
     margin-bottom: 15px;
   }
+
   .file_uploded .info_upload p {
     font-size: 17px;
   }
+
   .file_uploded .info_upload {
     margin-bottom: 80px;
   }
+
   .history_file .title_history h2 {
     font-size: 30px;
   }
+
   .history_file .table_history {
-    background-color: #FFFFFF;
-    border-radius: 45px;
     padding-top: 25px;
     padding-left: 20px;
     padding-bottom: 2px;
     overflow-x: scroll;
     margin-right: 10px;
   }
+
   .history_file .container {
     padding: 0 0 0 10px;
   }
-  .history_file .table_history .document-table th, .history_file .table_history .document-table td {
+
+  .history_file .table_history .document-table th,
+  .history_file .table_history .document-table td {
     padding: 9px;
-  }
-  .history_file .table_history .document-table th {
-    font-size: 17px;
-    font-weight: 700;
-    line-height: 24.05px;
-  }
-  .history_file .table_history .document-table th, .history_file .table_history .document-table td {
     font-size: 18px;
     line-height: 24.05px;
   }
+
+  .history_file .table_history .document-table th {
+    font-size: 17px;
+    font-weight: 700;
+  }
+
   .transliting .transliting_block .title h2 {
     font-size: 30px;
   }
+
   .transliting .transliting_block {
     padding: 44px 0 61px 0;
   }
+
   .transliting .transliting_block .block_translited .all_file {
     width: 100%;
   }
+
   .transliting .transliting_block .block_translited .all_file .pdf_file {
     padding: 18px;
   }
+
   .transliting .transliting_block .block_translited .all_file .page_pdf h4 {
     padding-left: 6px;
-  }
-  .transliting .transliting_block .block_translited .all_file .page_pdf h4 {
     font-size: 16px;
   }
+
   .transliting .transliting_block .block_translited .all_file .pdf_file p {
     font-size: 16px;
   }
+
   .transliting .transliting_block .block_translited .all_file .pdf_file p img {
     margin-right: 10px;
     width: 33px;
   }
+
   .transliting .transliting_block .block_translited .all_file {
     height: auto;
     margin: 0 15px;
   }
+
   .transliting .transliting_block .btn_cancel {
     margin-top: 94px;
-    text-align: center;
   }
+
   .transliting .info_upload p {
     font-size: 17px;
   }
+
   .transliting .info_upload {
     margin-bottom: 80px;
   }
+
   .file_uploded .block_uploded .select_option {
     flex-direction: column;
   }
+
   .file_uploded .block_uploded .select_option p {
     margin-right: 0;
     margin-bottom: 20px;
   }
+
   .file_uploded .block_uploded .select_option select {
     width: 310px;
     padding-left: 30px;
   }
+
   .file_uploded .block_uploded .block_info_uploded .info_item {
     width: 310px;
     padding: 20px 29px;
   }
+
   .file_upload .upload-container h2 {
     font-size: 26px;
     line-height: 31px;
   }
+
   .file_upload .upload-container {
     height: auto;
     padding: 39px;
   }
+
   .file_upload .upload-container button {
     font-size: 17px;
   }
+
   .file_upload .upload-container p {
     font-size: 17px;
   }
+
   .file_upload .upload-container button {
     margin-top: 15px;
   }
+
   .file_upload .info_upload p {
     font-size: 17px;
   }
+
   .file_upload .info_upload {
     margin-bottom: 80px;
   }
-}/*# sourceMappingURL=style.css.map */
+}
