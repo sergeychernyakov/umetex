@@ -74,11 +74,11 @@
                                 </td>
                                 <td>{{ document.uploaded_at|date:"d.m.Y" }}</td>
                                 <td>
-                                    {% if document.translated_file %}
-                                        <a href="{{ document.translated_file.url }}" class="download-btn">Скачать перевод</a>
-                                    {% else %}
-                                        <a href="{{ document.original_file.url }}" class="download-btn">Скачать</a>
-                                    {% endif %}
+                                  {% if document.translated_file %}
+                                      <a href="{{ document.translated_file.url }}" class="download-btn" target="_blank">Скачать перевод</a>
+                                  {% else %}
+                                      <a href="{{ document.original_file.url }}" class="download-btn" target="_blank">Скачать</a>
+                                  {% endif %}
                                 </td>
                             </tr>
                             {% endfor %}

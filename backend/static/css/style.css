@@ -736,3 +736,7 @@ header .header_block .title_header h1 span {
   background-color: #5FB248;
   color: #fff;
 }
+
+.table_history .document-table th {
+    white-space: nowrap; /* Prevents wrapping */
+}

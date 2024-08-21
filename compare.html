@@ -34,7 +34,7 @@
                         <input type="file" id="fileInput" style="display:none">
                     </div>   
                     <div class="info_upload">
-                        <p>Поддерживаемые форматы: 
+                        <p>Поддерживаемые форматы:
                             <span>
                                 {% for format in supported_formats %}
                                     {{ format }}{% if not forloop.last %}, {% endif %}
@@ -61,16 +61,28 @@
                               </tr>
                           </thead>
                           <tbody>
-                              {% for document in page_obj %}
-                              <tr>
-                                  <td>{{ document.title }}</td>
-                                  <td>{{ document.get_translation_language_display }}</td>
-                                  <td>{{ document.file.size|filesizeformat }}</td>
-                                  <td>{{ document.uploaded_at|date:"d.m.Y" }}</td>
-                                  <td><a href="{{ document.file.url }}" class="download-btn">Скачать</a></td>
-                              </tr>
-                              {% endfor %}
-                          </tbody>
+                            {% for document in page_obj %}
+                            <tr>
+                                <td>{{ document.title }}</td>
+                                <td>{{ document.get_translation_language_display }}</td>
+                                <td>
+                                    {% if document.original_file %}
+                                        {{ document.original_file.size|filesizeformat }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </td>
+                                <td>{{ document.uploaded_at|date:"d.m.Y" }}</td>
+                                <td>
+                                    {% if document.translated_file %}
+                                        <a href="{{ document.translated_file.url }}" class="download-btn" target="_blank">Скачать перевод</a>
+                                    {% else %}
+                                        <a href="{{ document.original_file.url }}" class="download-btn" target="_blank">Скачать</a>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
                       </table>
                       <div class="pagination">
                           {% if page_obj.has_previous %}

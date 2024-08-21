@@ -27,7 +27,7 @@ share/python-wheels/
 MANIFEST
 
 *.DS_Store
-documents/*
+media/*
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
