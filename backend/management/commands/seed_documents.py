@@ -12,8 +12,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         fake = Faker()
-        document_dir = os.path.join('documents')
-        os.makedirs(document_dir, exist_ok=True)
 
         # Optional: Clears existing documents
         Document.objects.all().delete()
@@ -22,24 +20,47 @@ class Command(BaseCommand):
 
         for i in range(30):  # Change to 40 if you need 40 documents
             title = fake.sentence(nb_words=3)
-            file_name = f"{title.replace(' ', '_')}_{i}.pdf"
-            file_path = os.path.join(document_dir, file_name)
 
-            # Create a simple PDF file
-            pdf = FPDF()
-            pdf.add_page()
-            pdf.set_font("Arial", size=12)
-            pdf.cell(200, 10, txt=title, ln=True, align='C')
-            pdf.output(file_path)
+            # Create a temporary document instance to get the ID
+            temp_doc = Document(title=title)
+            temp_doc.save()
+            doc_id = temp_doc.id
 
+            # Define the directory for this document based on its ID
+            document_dir = os.path.join('documents', str(doc_id))
+            os.makedirs(document_dir, exist_ok=True)
+
+            # Create the original PDF file
+            original_file_name = f"original_{doc_id}.pdf"
+            original_file_path = os.path.join(document_dir, original_file_name)
+            self.create_pdf(original_file_path, title)
+
+            translation_language = random.choice(languages)  # Always assign a language
             translated = random.choice([True, False])
-            translation_language = random.choice(languages)
+            translated_file_path = None
 
-            Document.objects.create(
-                title=title,
-                file=file_path,
-                translated=translated,
-                translation_language=translation_language,
-            )
+            if translated:
+                translated_file_name = f"translated_{doc_id}.pdf"
+                translated_file_path = os.path.join(document_dir, translated_file_name)
+                self.create_pdf(translated_file_path, f"Translated: {title} ({translation_language})")
+
+            # Update the document with the correct paths and translation language
+            temp_doc.original_file = original_file_path
+            if translated_file_path:
+                temp_doc.translated_file = translated_file_path
+            temp_doc.translation_language = translation_language
+            temp_doc.save()
 
         self.stdout.write(self.style.SUCCESS('Successfully seeded the database with sample documents and PDFs'))
+
+    def create_pdf(self, path, text):
+        """ Helper function to create a PDF file with the given text. """
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.set_font("Arial", size=12)
+        pdf.cell(200, 10, txt=text, ln=True, align='C')
+        pdf.output(path)
+
+        # Check if the file was created successfully
+        if not os.path.isfile(path):
+            self.stdout.write(self.style.ERROR(f"Failed to create PDF: {path}"))
