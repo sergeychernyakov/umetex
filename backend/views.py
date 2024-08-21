@@ -1,6 +1,7 @@
 # backend/views.py
 
 from rest_framework import viewsets
+from django.conf import settings
 from django.shortcuts import render
 from django.core.paginator import Paginator
 from .models import Document
@@ -20,4 +21,11 @@ def index(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
-    return render(request, 'index.html', {'page_obj': page_obj})
+    return render(
+        request,
+        'index.html',
+        {
+            'page_obj': page_obj,
+            'supported_formats': settings.SUPPORTED_FILE_FORMATS,
+        }
+    )

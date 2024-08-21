@@ -1,3 +1,5 @@
+# umetex_config/settings.py
+
 """
 Django settings for umetex_config project.
 
@@ -125,3 +127,5 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, 'backend/static')]
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+SUPPORTED_FILE_FORMATS = ['.pdf', '.docx', '.jpg', '.jpeg', '.png']

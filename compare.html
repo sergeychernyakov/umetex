@@ -34,53 +34,58 @@
                         <input type="file" id="fileInput" style="display:none">
                     </div>   
                     <div class="info_upload">
-                        <p>Поддерживаемые форматы: <span>.pdf</span> </p>
+                        <p>Поддерживаемые форматы: 
+                            <span>
+                                {% for format in supported_formats %}
+                                    {{ format }}{% if not forloop.last %}, {% endif %}
+                                {% endfor %}
+                            </span>
+                        </p>
                     </div>
                 </div>
             </div>
             <div class="history_file">
-                <div class="container">
-                    <div class="title_history">
-                        <h2>История переводов</h2>
-                    </div>
-                    <div class="table_history">
-                        <table class="document-table">
-                            <thead>
-                                <tr>
-                                    <th>Название</th>
-                                    <th>Язык перевода</th>
-                                    <th>Вес файла</th>
-                                    <th>Дата</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for document in documents %}
-                                <tr>
-                                    <td>{{ document.title }}</td>
-                                    <td>{{ document.translation_language }}</td>
-                                    <td>{{ document.file.size|filesizeformat }}</td>
-                                    <td>{{ document.uploaded_at|date:"d.m.Y" }}</td>
-                                    <td><a href="{{ document.file.url }}" class="download-btn">Скачать</a></td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                        <div class="pagination">
-                            {% if documents.has_previous %}
-                            <a href="?page=1">&laquo; Первая</a>
-                            <a href="?page={{ documents.previous_page_number }}">Назад</a>
-                            {% endif %}
-                            <span class="current">Страница {{ documents.number }} из {{ documents.paginator.num_pages }}</span>
-                            {% if documents.has_next %}
-                            <a href="?page={{ documents.next_page_number }}">Вперёд</a>
-                            <a href="?page={{ documents.paginator.num_pages }}">Последняя &raquo;</a>
-                            {% endif %}
-                        </div>
-                    </div>
-                </div>
-            </div>
-
+              <div class="container">
+                  <div class="title_history">
+                      <h2>История переводов</h2>
+                  </div>
+                  <div class="table_history">
+                      <table class="document-table">
+                          <thead>
+                              <tr>
+                                  <th>Название</th>
+                                  <th>Язык перевода</th>
+                                  <th>Вес файла</th>
+                                  <th>Дата</th>
+                                  <th></th>
+                              </tr>
+                          </thead>
+                          <tbody>
+                              {% for document in page_obj %}
+                              <tr>
+                                  <td>{{ document.title }}</td>
+                                  <td>{{ document.get_translation_language_display }}</td>
+                                  <td>{{ document.file.size|filesizeformat }}</td>
+                                  <td>{{ document.uploaded_at|date:"d.m.Y" }}</td>
+                                  <td><a href="{{ document.file.url }}" class="download-btn">Скачать</a></td>
+                              </tr>
+                              {% endfor %}
+                          </tbody>
+                      </table>
+                      <div class="pagination">
+                          {% if page_obj.has_previous %}
+                          <a href="?page=1">&laquo; Первая</a>
+                          <a href="?page={{ page_obj.previous_page_number }}">Назад</a>
+                          {% endif %}
+                          <span class="current">Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
+                          {% if page_obj.has_next %}
+                          <a href="?page={{ page_obj.next_page_number }}">Вперёд</a>
+                          <a href="?page={{ page_obj.paginator.num_pages }}">Последняя &raquo;</a>
+                          {% endif %}
+                      </div>
+                  </div>
+              </div>
+          </div>          
         </main>
     </div>
 

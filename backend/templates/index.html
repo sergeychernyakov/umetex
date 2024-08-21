@@ -34,7 +34,13 @@
                         <input type="file" id="fileInput" style="display:none">
                     </div>   
                     <div class="info_upload">
-                        <p>Поддерживаемые форматы: <span>.pdf</span> </p>
+                        <p>Поддерживаемые форматы: 
+                            <span>
+                                {% for format in supported_formats %}
+                                    {{ format }}{% if not forloop.last %}, {% endif %}
+                                {% endfor %}
+                            </span>
+                        </p>
                     </div>
                 </div>
             </div>
@@ -58,7 +64,7 @@
                               {% for document in page_obj %}
                               <tr>
                                   <td>{{ document.title }}</td>
-                                  <td>{{ document.translation_language }}</td>
+                                  <td>{{ document.get_translation_language_display }}</td>
                                   <td>{{ document.file.size|filesizeformat }}</td>
                                   <td>{{ document.uploaded_at|date:"d.m.Y" }}</td>
                                   <td><a href="{{ document.file.url }}" class="download-btn">Скачать</a></td>
