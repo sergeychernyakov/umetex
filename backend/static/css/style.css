@@ -706,3 +706,33 @@ header .header_block .title_header h1 span {
     margin-bottom: 80px;
   }
 }
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 20px;
+  font-family: Inter, sans-serif;
+  font-size: 18px;
+}
+
+.pagination span,
+.pagination a {
+  margin: 0 10px;
+  padding: 10px 15px;
+  text-decoration: none;
+  border-radius: 30px;
+  color: #5FB248;
+  background-color: #E0F9D9;
+  transition: background-color 0.3s ease;
+}
+
+.pagination a:hover {
+  background-color: #9edc9e;
+  color: #fff;
+}
+
+.pagination span.current {
+  background-color: #5FB248;
+  color: #fff;
+}

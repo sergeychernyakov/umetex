@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
-    <title>Document</title>
+    <title>Umetex - Переводчик медицинских документов</title>
 </head>
 <body>
     <div class="wrapper">
@@ -39,48 +39,47 @@
                 </div>
             </div>
             <div class="history_file">
-                <div class="container">
-                    <div class="title_history">
-                        <h2>История переводов</h2>
-                    </div>
-                    <div class="table_history">
-                        <table class="document-table">
-                            <thead>
-                                <tr>
-                                    <th>Название</th>
-                                    <th>Язык перевода</th>
-                                    <th>Вес файла</th>
-                                    <th>Дата</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>Report 3.pdf</td>
-                                    <td>Английский</td>
-                                    <td>12 мб.</td>
-                                    <td>31.07.24</td>
-                                    <td><a href="#" class="download-btn">Скачать</a></td>
-                                </tr>
-                                <tr>
-                                    <td>Report 2.pdf</td>
-                                    <td>Испанский</td>
-                                    <td>10 мб.</td>
-                                    <td>31.07.24</td>
-                                    <td><a href="#" class="download-btn">Скачать</a></td>
-                                </tr>
-                                <tr>
-                                    <td>Report.pdf</td>
-                                    <td>Казахский</td>
-                                    <td>25 мб.</td>
-                                    <td>30.07.24</td>
-                                    <td><a href="#" class="download-btn">Скачать</a></td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
+              <div class="container">
+                  <div class="title_history">
+                      <h2>История переводов</h2>
+                  </div>
+                  <div class="table_history">
+                      <table class="document-table">
+                          <thead>
+                              <tr>
+                                  <th>Название</th>
+                                  <th>Язык перевода</th>
+                                  <th>Вес файла</th>
+                                  <th>Дата</th>
+                                  <th></th>
+                              </tr>
+                          </thead>
+                          <tbody>
+                              {% for document in page_obj %}
+                              <tr>
+                                  <td>{{ document.title }}</td>
+                                  <td>{{ document.translation_language }}</td>
+                                  <td>{{ document.file.size|filesizeformat }}</td>
+                                  <td>{{ document.uploaded_at|date:"d.m.Y" }}</td>
+                                  <td><a href="{{ document.file.url }}" class="download-btn">Скачать</a></td>
+                              </tr>
+                              {% endfor %}
+                          </tbody>
+                      </table>
+                      <div class="pagination">
+                          {% if page_obj.has_previous %}
+                          <a href="?page=1">&laquo; Первая</a>
+                          <a href="?page={{ page_obj.previous_page_number }}">Назад</a>
+                          {% endif %}
+                          <span class="current">Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
+                          {% if page_obj.has_next %}
+                          <a href="?page={{ page_obj.next_page_number }}">Вперёд</a>
+                          <a href="?page={{ page_obj.paginator.num_pages }}">Последняя &raquo;</a>
+                          {% endif %}
+                      </div>
+                  </div>
+              </div>
+          </div>          
         </main>
     </div>
 
