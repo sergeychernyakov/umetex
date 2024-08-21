@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <title>Document</title>
+</head>
+<body>
+    <div class="wrapper">
+        <header>
+            <div class="container">
+                <div class="header_block">
+                    <div class="logo">
+                        <a href="#"><img src="img/logo.svg" alt=""></a>
+                    </div>
+                    <div class="title_header">
+                        <h1>Переводчик <span>медицинских</span> документов</h1>
+                    </div>
+                </div>
+            </div>
+        </header>
+        <main>
+          
+            <div class="file_uplploud">
+                <div class="container">
+                    <div class="upload-container" id="uploadContainer">
+                        <img src="img/upload-file.svg" alt="Upload Icon">
+                        <h2>Загрузите документ для перевода</h2>
+                        <p>Перетащите файл или <button onclick="document.getElementById('fileInput').click()">выберите нужный</button></p>
+                        <input type="file" id="fileInput" style="display:none">
+                    </div>   
+                    <div class="info_uploud">
+                        <p>Поддерживаемые форматы: <span>.pdf</span> </p>
+                    </div>
+                </div>
+            </div>
+            <div class="history_file">
+                <div class="container">
+                    <div class="title_history">
+                        <h2>История переводов</h2>
+                    </div>
+                    <div class="table_history">
+                        <table class="document-table">
+                            <thead>
+                                <tr>
+                                    <th>Название</th>
+                                    <th>Язык перевода</th>
+                                    <th>Вес файла</th>
+                                    <th>Дата</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Report 3.pdf</td>
+                                    <td>Английский</td>
+                                    <td>12 мб.</td>
+                                    <td>31.07.24</td>
+                                    <td><a href="#" class="download-btn">Скачать</a></td>
+                                </tr>
+                                <tr>
+                                    <td>Report 2.pdf</td>
+                                    <td>Испанский</td>
+                                    <td>10 мб.</td>
+                                    <td>31.07.24</td>
+                                    <td><a href="#" class="download-btn">Скачать</a></td>
+                                </tr>
+                                <tr>
+                                    <td>Report.pdf</td>
+                                    <td>Казахский</td>
+                                    <td>25 мб.</td>
+                                    <td>30.07.24</td>
+                                    <td><a href="#" class="download-btn">Скачать</a></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="js/main.js"></script>
+</body>
+</html>
