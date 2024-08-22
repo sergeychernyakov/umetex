@@ -260,7 +260,7 @@ header{
 .select-file {
     color: #00cc66;
 }
-.file_uploded{
+.file_uploaded{
     margin-top: 63px;
     margin-bottom: 44px;
     .info_upload{
@@ -279,7 +279,7 @@ header{
             
         }
     }
-    .block_uploded{
+    .block_uploaded{
         background-color: #FFFFFF;
         padding: 60px 0 70px 0;
         border-radius: 45px;
@@ -289,7 +289,7 @@ header{
         }
 
       
-        .title_uploded{
+        .title_uploaded{
             text-align: center;
             display: flex;
             flex-direction: column;
@@ -323,7 +323,7 @@ header{
                       
             }
         }
-        .block_info_uploded{
+        .block_info_uploaded{
             display: flex;
             align-items: center;
             justify-content: center;
@@ -393,7 +393,7 @@ header{
                 }
             }
         }
-        .btn_file_uploded{
+        .btn_file_uploaded{
             display: flex;
             align-items: center;
             margin-top: 33px;
@@ -432,8 +432,8 @@ header{
 }
 
 
-.transliting{
-    .transliting_block{
+.translating{
+    .translating_block{
         background: #FFFFFF;
         border-radius: 45px;
         padding: 60px 0;
@@ -457,7 +457,7 @@ header{
             }
           
         }
-        .block_translited{
+        .block_translated{
             display: flex;
             align-items: center;
             justify-content: center;
@@ -549,7 +549,7 @@ header{
         line-height: 31.41px;
         margin-top: 40px;
     }  
-    .file_uploded .block_uploded {
+    .file_uploaded .block_uploaded {
         background-color: #FFFFFF;
         padding: 44px 0 61px 0;
         border-radius: 45px;
@@ -559,27 +559,27 @@ header{
     .container{
         padding: 0 10px;
     }
-    .file_uploded .block_uploded .title_uploded h2{
+    .file_uploaded .block_uploaded .title_uploaded h2{
         font-size: 30px;
         margin-left: 10px;
         margin-right: 10px;
     }
-    .file_uploded .block_uploded .title_uploded p{
+    .file_uploaded .block_uploaded .title_uploaded p{
         width: auto;
         margin-left: 10px;
         margin-right: 10px;
     }
-    .file_uploded .block_uploded .btn_file_uploded{
+    .file_uploaded .block_uploaded .btn_file_uploaded{
         flex-direction: column;
     }
-    .file_uploded .block_uploded .btn_file_uploded button{
+    .file_uploaded .block_uploaded .btn_file_uploaded button{
         margin-right: 0;
         margin-bottom: 15px;
     }
-    .file_uploded .info_upload p{
+    .file_uploaded .info_upload p{
         font-size: 17px;
     }
-    .file_uploded .info_upload {
+    .file_uploaded .info_upload {
         margin-bottom: 80px;
     }
     .history_file .title_history h2{
@@ -609,58 +609,58 @@ header{
         font-size: 18px;
         line-height: 24.05px;  
     }
-    .transliting .transliting_block .title h2{
+    .translating .translating_block .title h2{
         font-size: 30px;
     }
-    .transliting .transliting_block{
+    .translating .translating_block{
         padding: 44px 0 61px 0;
     }
-    .transliting .transliting_block .block_translited .all_file{
+    .translating .translating_block .block_translated .all_file{
         width: 100%;
     }
-    .transliting .transliting_block .block_translited .all_file .pdf_file{
+    .translating .translating_block .block_translated .all_file .pdf_file{
         padding: 18px;
     }
-    .transliting .transliting_block .block_translited .all_file .page_pdf h4{
+    .translating .translating_block .block_translated .all_file .page_pdf h4{
         padding-left: 6px;
     }
-    .transliting .transliting_block .block_translited .all_file .page_pdf h4{
+    .translating .translating_block .block_translated .all_file .page_pdf h4{
         font-size: 16px;
     }
-    .transliting .transliting_block .block_translited .all_file .pdf_file p{
+    .translating .translating_block .block_translated .all_file .pdf_file p{
         font-size: 16px;
     }
-    .transliting .transliting_block .block_translited .all_file .pdf_file p img {
+    .translating .translating_block .block_translated .all_file .pdf_file p img {
         margin-right: 10px;
         width: 33px;
     }
-    .transliting .transliting_block .block_translited .all_file{
+    .translating .translating_block .block_translated .all_file{
         height: auto;
         margin: 0 15px;
     }
    
-    .transliting .transliting_block .btn_cancel {
+    .translating .translating_block .btn_cancel {
         margin-top: 94px;
         text-align: center;
     }
-    .transliting .info_upload p{
+    .translating .info_upload p{
         font-size: 17px;
     }
-    .transliting .info_upload{
+    .translating .info_upload{
         margin-bottom: 80px;
     }
-    .file_uploded .block_uploded .select_option{
+    .file_uploaded .block_uploaded .select_option{
         flex-direction: column;
     }
-    .file_uploded .block_uploded .select_option p{
+    .file_uploaded .block_uploaded .select_option p{
         margin-right: 0;
         margin-bottom: 20px;
     }
-    .file_uploded .block_uploded .select_option select{
+    .file_uploaded .block_uploaded .select_option select{
         width: 310px;
         padding-left: 30px;
     }
-    .file_uploded .block_uploded .block_info_uploded .info_item{
+    .file_uploaded .block_uploaded .block_info_uploaded .info_item{
         width: 310px;
         padding: 20px 29px;
     }

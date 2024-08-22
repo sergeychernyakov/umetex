@@ -1,3 +1,5 @@
+/* backend/static/css/style.css */
+
 /* Reset and base styles */
 * {
   margin: 0;
@@ -71,9 +73,6 @@ header .header_block .title_header h1 span {
 }
 
 /* File upload styles */
-.file_upload {
-  margin-bottom: 134px;
-}
 
 .file_upload .upload-container {
   text-align: center;
@@ -220,7 +219,6 @@ header .header_block .title_header h1 span {
   border-radius: 37px;
   padding: 12px 22px;
   color: #5FB248;
-  background-color: #E0F9D9;
   border: none;
   cursor: pointer;
 }
@@ -251,16 +249,13 @@ header .header_block .title_header h1 span {
 }
 
 /* File uploaded styles */
-.file_uploded {
+.file_uploaded.active {
   margin-top: 63px;
   margin-bottom: 44px;
 }
 
-.file_uploded .info_upload {
-  margin-bottom: 134px;
-}
 
-.file_uploded .info_upload p {
+.file_uploaded .info_upload p {
   font-family: Inter;
   font-size: 24px;
   font-weight: 400;
@@ -269,30 +264,30 @@ header .header_block .title_header h1 span {
   margin-top: 44px;
 }
 
-.file_uploded .info_upload p span {
+.file_uploaded .info_upload p span {
   font-weight: 700;
   opacity: 0.5;
 }
 
-.file_uploded .block_uploded {
+.file_uploaded .block_uploaded {
   background-color: #FFFFFF;
   padding: 60px 0 70px 0;
   border-radius: 45px;
 }
 
-.file_uploded .block_uploded .img_done {
+.file_uploaded .block_uploaded .img_done {
   text-align: center;
   margin-bottom: 34px;
 }
 
-.file_uploded .block_uploded .title_uploded {
+.file_uploaded .block_uploaded .title_uploaded {
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-.file_uploded .block_uploded .title_uploded h2 {
+.file_uploaded .block_uploaded .title_uploaded h2 {
   font-family: Inter;
   font-size: 36px;
   font-weight: 700;
@@ -301,11 +296,11 @@ header .header_block .title_header h1 span {
   margin-bottom: 47px;
 }
 
-.file_uploded .block_uploded .title_uploded .done_text {
+.file_uploaded .block_uploaded .title_uploaded .done_text {
   margin-bottom: 0;
 }
 
-.file_uploded .block_uploded .title_uploded p {
+.file_uploaded .block_uploaded .title_uploaded p {
   font-family: Inter;
   font-size: 24px;
   font-weight: 400;
@@ -320,20 +315,20 @@ header .header_block .title_header h1 span {
   margin-bottom: 63px;
 }
 
-.file_uploded .block_uploded .block_info_uploded {
+.file_uploaded .block_uploaded .block_info_uploaded {
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.file_uploded .block_uploded .block_info_uploded .info_item {
+.file_uploaded .block_uploaded .block_info_uploaded .info_item {
   background: #F7F7F7;
   border-radius: 45px;
   padding: 30px 44px;
   width: 788px;
 }
 
-.file_uploded .block_uploded .block_info_uploded .info_item p {
+.file_uploaded .block_uploaded .block_info_uploaded .info_item p {
   font-family: Inter;
   font-size: 24px;
   font-weight: 400;
@@ -343,18 +338,18 @@ header .header_block .title_header h1 span {
   align-items: center;
 }
 
-.file_uploded .block_uploded .block_info_uploded .info_item p img {
+.file_uploaded .block_uploaded .block_info_uploaded .info_item p img {
   margin-right: 20px;
 }
 
-.file_uploded .block_uploded .select_option {
+.file_uploaded .block_uploaded .select_option {
   display: flex;
   justify-content: center;
   margin-top: 34px;
   align-items: center;
 }
 
-.file_uploded .block_uploded .select_option p {
+.file_uploaded .block_uploaded .select_option p {
   font-family: Inter;
   font-size: 24px;
   font-weight: 400;
@@ -363,7 +358,7 @@ header .header_block .title_header h1 span {
   margin-right: 75px;
 }
 
-.file_uploded .block_uploded .select_option select {
+.file_uploaded .block_uploaded .select_option select {
   width: 388px;
   height: 60px;
   font-family: Inter;
@@ -382,7 +377,7 @@ header .header_block .title_header h1 span {
   padding-left: 10px;
 }
 
-.file_uploded .block_uploded .select_option select option {
+.file_uploaded .block_uploaded .select_option select option {
   font-family: Inter;
   font-size: 24px;
   font-weight: 400;
@@ -390,14 +385,14 @@ header .header_block .title_header h1 span {
   text-align: center;
 }
 
-.file_uploded .block_uploded .btn_file_uploded {
+.file_uploaded .block_uploaded .btn_file_uploaded {
   display: flex;
   align-items: center;
   margin-top: 33px;
   justify-content: center;
 }
 
-.file_uploded .block_uploded .btn_file_uploded button {
+.file_uploaded .block_uploaded .btn_file_uploaded button {
   font-family: Inter;
   font-size: 24px;
   font-weight: 700;
@@ -412,7 +407,7 @@ header .header_block .title_header h1 span {
   margin-right: 31px;
 }
 
-.file_uploded .block_uploded .btn_file_uploded a {
+.file_uploaded .block_uploaded .btn_file_uploaded a {
   font-family: Inter;
   font-size: 24px;
   font-weight: 400;
@@ -422,7 +417,7 @@ header .header_block .title_header h1 span {
 }
 
 /* Translating styles */
-.transliting .transliting_block {
+.translating .translating_block {
   background: #FFFFFF;
   border-radius: 45px;
   padding: 60px 0;
@@ -430,14 +425,14 @@ header .header_block .title_header h1 span {
   margin-top: 63px;
 }
 
-.transliting .transliting_block .title {
+.translating .translating_block .title {
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-.transliting .transliting_block .title h2 {
+.translating .translating_block .title h2 {
   font-family: Inter;
   font-size: 36px;
   font-weight: 700;
@@ -447,30 +442,33 @@ header .header_block .title_header h1 span {
   margin-bottom: 107px;
 }
 
-.transliting .transliting_block .block_translited {
+.translating .translating_block .block_translated {
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-.transliting .transliting_block .block_translited .all_file {
-  background: #F7F7F7;
-  border-radius: 45px;
+.translating .translating_block .block_translated .all_file {
+  position: relative;  /* Allows absolute positioning of child elements */
   display: flex;
   align-items: center;
-  width: 788px;
+  width: 90%;
   height: 104px;
+  background: #F7F7F7;
+  border-radius: 45px;
 }
 
-.transliting .transliting_block .block_translited .all_file .pdf_file {
+.translating .translating_block .block_translated .all_file .pdf_file {
+  width: 35%;  /* Takes up the full width */
+  padding: 30px 44px;
   display: flex;
   align-items: center;
   background: linear-gradient(96.94deg, #5FB248 -32.62%, #48B29F 114.76%);
-  padding: 30px 155px 30px 44px;
   border-radius: 44px;
+  z-index: 1;  /* Ensure it's below the .page_pdf */
 }
 
-.transliting .transliting_block .block_translited .all_file .pdf_file p {
+.translating .translating_block .block_translated .all_file .pdf_file p {
   font-family: Inter;
   font-size: 24px;
   font-weight: 400;
@@ -481,30 +479,40 @@ header .header_block .title_header h1 span {
   align-items: center;
 }
 
-.transliting .transliting_block .block_translited .all_file .pdf_file p img {
+.translating .translating_block .block_translated .all_file .pdf_file p img {
   margin-right: 20px;
 }
 
-.transliting .transliting_block .block_translited .all_file .page_pdf h4 {
+.translating .translating_block .block_translated .all_file .page_pdf {
+  position: absolute;  /* Positioned relative to .all_file */
+  right: 20px;  /* Align it to the right */
+  top: 50%;
+  transform: translateY(-50%);  /* Center vertically */
+  padding: 5px 10px;
+  border-radius: 5px;
+  z-index: 2;  /* Place it above the .pdf_file */
+}
+
+.translating .translating_block .block_translated .all_file .page_pdf h4 {
+  margin: 0;
   font-family: Inter;
   font-size: 24px;
   font-weight: 400;
   line-height: 29.05px;
-  text-align: center;
+  text-align: right;
   color: #000;
-  padding-left: 184px;
 }
 
-.transliting .transliting_block .block_translited .all_file .page_pdf h4 span {
+.translating .translating_block .block_translated .all_file .page_pdf h4 span {
   font-weight: 700;
 }
 
-.transliting .transliting_block .btn_cancel {
+.translating .translating_block .btn_cancel {
   margin-top: 120px;
   text-align: center;
 }
 
-.transliting .transliting_block .btn_cancel button {
+.translating .translating_block .btn_cancel button {
   font-family: Inter;
   font-size: 24px;
   font-weight: 400;
@@ -515,22 +523,114 @@ header .header_block .title_header h1 span {
   cursor: pointer;
 }
 
-.transliting .info_upload {
-  margin-bottom: 134px;
-}
 
-.transliting .info_upload p {
+.translating .info_upload p {
   font-family: Inter;
   font-size: 24px;
   font-weight: 400;
   line-height: 29.05px;
   text-align: center;
-  margin-top: 44px;
 }
 
-.transliting .info_upload p span {
+.translating .info_upload p span {
   font-weight: 700;
   opacity: 0.5;
+}
+
+/* File translated styles */
+.file_translated {
+  margin-top: 63px;
+  margin-bottom: 44px;
+}
+
+.file_translated .info_upload p {
+  font-family: Inter;
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 29.05px;
+  text-align: center;
+}
+
+.file_translated .info_upload p span {
+  font-weight: 700;
+  opacity: 0.5;
+}
+
+.file_translated .block_uploaded {
+  background-color: #FFFFFF;
+  padding: 60px 0 70px 0;
+  border-radius: 45px;
+}
+
+.file_translated .block_uploaded .img_done {
+  text-align: center;
+  margin-bottom: 34px;
+}
+
+.file_translated .block_uploaded .title_uploaded {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.file_translated .block_uploaded .title_uploaded h2 {
+  font-family: Inter;
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 43.57px;
+  color: #000;
+  margin-bottom: 47px;
+}
+
+.file_translated .block_uploaded .title_uploaded .done_text {
+  margin-bottom: 0;
+}
+
+.file_translated .block_uploaded .title_uploaded p {
+  font-family: Inter;
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 29.05px;
+  text-align: center;
+  color: #909090;
+  width: 545px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 17px;
+  margin-bottom: 63px;
+}
+
+.file_translated .block_uploaded .btn_file_uploaded {
+  display: flex;
+  align-items: center;
+  margin-top: 33px;
+  justify-content: center;
+}
+
+.file_translated .block_uploaded .btn_file_uploaded button {
+  font-family: Inter;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 29.05px;
+  text-align: center;
+  padding: 22px 50px;
+  color: #fff;
+  background: linear-gradient(96.19deg, #5FB248 -18.32%, #48B29F 130.36%);
+  border-radius: 37px;
+  border: none;
+  cursor: pointer;
+  margin-right: 31px;
+}
+
+.file_translated .block_uploaded .btn_file_uploaded a {
+  font-family: Inter;
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 29.05px;
+  text-align: center;
+  color: #000;
 }
 
 /* Responsive styles */
@@ -542,7 +642,7 @@ header .header_block .title_header h1 span {
     margin-top: 40px;
   }
 
-  .file_uploded .block_uploded {
+  .file_uploaded .block_uploaded {
     padding: 44px 0 61px 0;
     border-radius: 45px;
     margin-left: 10px;
@@ -553,32 +653,32 @@ header .header_block .title_header h1 span {
     padding: 0 10px;
   }
 
-  .file_uploded .block_uploded .title_uploded h2 {
+  .file_uploaded .block_uploaded .title_uploaded h2 {
     font-size: 30px;
     margin-left: 10px;
     margin-right: 10px;
   }
 
-  .file_uploded .block_uploded .title_uploded p {
+  .file_uploaded .block_uploaded .title_uploaded p {
     width: auto;
     margin-left: 10px;
     margin-right: 10px;
   }
 
-  .file_uploded .block_uploded .btn_file_uploded {
+  .file_uploaded .block_uploaded .btn_file_uploaded {
     flex-direction: column;
   }
 
-  .file_uploded .block_uploded .btn_file_uploded button {
+  .file_uploaded .block_uploaded .btn_file_uploaded button {
     margin-right: 0;
     margin-bottom: 15px;
   }
 
-  .file_uploded .info_upload p {
+  .file_uploaded .info_upload p {
     font-size: 17px;
   }
 
-  .file_uploded .info_upload {
+  .file_uploaded .info_upload {
     margin-bottom: 80px;
   }
 
@@ -610,68 +710,68 @@ header .header_block .title_header h1 span {
     font-weight: 700;
   }
 
-  .transliting .transliting_block .title h2 {
+  .translating .translating_block .title h2 {
     font-size: 30px;
   }
 
-  .transliting .transliting_block {
+  .translating .translating_block {
     padding: 44px 0 61px 0;
   }
 
-  .transliting .transliting_block .block_translited .all_file {
+  .translating .translating_block .block_translated .all_file {
     width: 100%;
   }
 
-  .transliting .transliting_block .block_translited .all_file .pdf_file {
+  .translating .translating_block .block_translated .all_file .pdf_file {
     padding: 18px;
   }
 
-  .transliting .transliting_block .block_translited .all_file .page_pdf h4 {
+  .translating .translating_block .block_translated .all_file .page_pdf h4 {
     padding-left: 6px;
     font-size: 16px;
   }
 
-  .transliting .transliting_block .block_translited .all_file .pdf_file p {
+  .translating .translating_block .block_translated .all_file .pdf_file p {
     font-size: 16px;
   }
 
-  .transliting .transliting_block .block_translited .all_file .pdf_file p img {
+  .translating .translating_block .block_translated .all_file .pdf_file p img {
     margin-right: 10px;
     width: 33px;
   }
 
-  .transliting .transliting_block .block_translited .all_file {
+  .translating .translating_block .block_translated .all_file {
     height: auto;
     margin: 0 15px;
   }
 
-  .transliting .transliting_block .btn_cancel {
+  .translating .translating_block .btn_cancel {
     margin-top: 94px;
   }
 
-  .transliting .info_upload p {
+  .translating .info_upload p {
     font-size: 17px;
   }
 
-  .transliting .info_upload {
+  .translating .info_upload {
     margin-bottom: 80px;
   }
 
-  .file_uploded .block_uploded .select_option {
+  .file_uploaded .block_uploaded .select_option {
     flex-direction: column;
   }
 
-  .file_uploded .block_uploded .select_option p {
+  .file_uploaded .block_uploaded .select_option p {
     margin-right: 0;
     margin-bottom: 20px;
   }
 
-  .file_uploded .block_uploded .select_option select {
+  .file_uploaded .block_uploaded .select_option select {
     width: 310px;
     padding-left: 30px;
   }
 
-  .file_uploded .block_uploded .block_info_uploded .info_item {
+  .file_uploaded .block_uploaded .block_info_uploaded .info_item {
     width: 310px;
     padding: 20px 29px;
   }
@@ -739,4 +839,63 @@ header .header_block .title_header h1 span {
 
 .table_history .document-table th {
     white-space: nowrap; /* Prevents wrapping */
+}
+
+.upload-container {
+  border: 2px dashed #ccc;
+  padding: 20px;
+  text-align: center;
+}
+
+.upload-container.drag-over {
+  border-color: #4caf50; /* Green color to indicate an active drop zone */
+  background-color: #f1f1f1;
+}
+
+/* Styles for the download button in the file_translated block */
+.file_translated .block_uploaded .btn_file_uploaded .download-btn {
+  font-family: Inter, sans-serif;
+  font-size: 24px;
+  font-weight: 700;  /* Ensures the text is bold */
+  line-height: 29.05px;
+  text-align: center;
+  padding: 22px 50px;
+  color: #fff;  /* Ensures the text color is white */
+  background: linear-gradient(96.19deg, #5FB248 -18.32%, #48B29F 130.36%);
+  border-radius: 37px;
+  border: none;
+  cursor: pointer;
+  margin-right: 31px;
+  display: inline-block;
+  text-decoration: none;
+}
+
+.file_translated .block_uploaded .btn_file_uploaded .download-btn:hover {
+  background: linear-gradient(96.19deg, #48B29F -18.32%, #5FB248 130.36%);
+  color: #fff; /* Keep text color white on hover */
+}
+
+#translationForm {
+    max-height: 700px;
+}
+
+/* Add transitions for smooth block visibility change */
+.file_upload,
+.file_uploaded,
+.translating,
+.file_translated {
+    opacity: 0;
+    visibility: hidden;
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity 0.5s ease, visibility 0.5s ease, max-height 0.5s ease;
+}
+
+.file_upload.active,
+.file_uploaded.active,
+.translating.active,
+.file_translated.active {
+    opacity: 1;
+    visibility: visible;
+    max-height: 700px; /* Adjust to a value large enough to cover the largest content */
 }

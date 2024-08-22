@@ -1,3 +1,5 @@
+<!-- backend/templates/index.html -->
+
 {% load static %}
 <!DOCTYPE html>
 <html lang="en">
@@ -16,7 +18,7 @@
             <div class="container">
                 <div class="header_block">
                     <div class="logo">
-                        <a href="#"><img src="{% static 'img/logo.svg' %}" alt=""></a>
+                        <a href="/"><img src="{% static 'img/logo.svg' %}" alt="Logo"></a>
                     </div>
                     <div class="title_header">
                         <h1>Переводчик <span>медицинских</span> документов</h1>
@@ -25,81 +27,176 @@
             </div>
         </header>
         <main>
-            <div class="file_upload">
-                <div class="container">
-                    <div class="upload-container" id="uploadContainer">
-                        <img src="{% static 'img/upload-file.svg' %}" alt="Upload Icon">
-                        <h2>Загрузите документ для перевода</h2>
-                        <p>Перетащите файл или <button onclick="document.getElementById('fileInput').click()">выберите нужный</button></p>
-                        <input type="file" id="fileInput" style="display:none">
-                    </div>   
+            <!-- Form handling all steps -->
+            <form id="translationForm" enctype="multipart/form-data" action="{% url 'upload_document' %}">
+                {% csrf_token %}
+
+                <!-- File Upload Block -->
+                <div class="file_upload" id="fileUploadBlock">
+                    <div class="container">
+                        <div class="upload-container" id="uploadContainer">
+                            <img src="{% static 'img/upload-file.svg' %}" alt="Upload Icon">
+                            <h2>Загрузите документ для перевода</h2>
+                            <p>Перетащите файл или <button type="button" id="fileInputButton">выберите нужный</button></p>
+                            <input type="file" id="fileInput" name="document" style="display:none">
+                        </div>
+                    </div>
                     <div class="info_upload">
-                        <p>Поддерживаемые форматы:
-                            <span>
-                                {% for format in supported_formats %}
-                                    {{ format }}{% if not forloop.last %}, {% endif %}
-                                {% endfor %}
-                            </span>
-                        </p>
+                      <p>Поддерживаемые форматы:
+                          <span>
+                              {% for format in supported_formats %}
+                                  {{ format }}{% if not forloop.last %}, {% endif %}
+                              {% endfor %}
+                          </span>
+                      </p>
+                  </div>
+                </div>
+
+                <!-- File Uploaded Block (Hidden initially) -->
+                <div class="file_uploaded" id="fileUploadedBlock">
+                    <div class="container">
+                        <div class="block_uploaded">
+                            <div class="title_uploaded">
+                                <h2>Выберите язык перевода</h2>
+                            </div>
+                            <div class="block_info_uploaded">
+                                <div class="info_item">
+                                    <p><img src="{% static 'img/File.svg' %}" alt="File Icon"> <span id="uploadedFileName">Report.pdf</span></p>
+                                </div>
+                            </div>
+                            <div class="select_option">
+                                <p>Выберите язык перевода:</p>
+                                <select name="language" id="languageSelect">
+                                    {% for abbr, name in languages %}
+                                        <option value="{{ abbr }}">{{ name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="btn_file_uploaded">
+                                <button type="button" onclick="startTranslation()">Начать перевод</button>
+                                <a href="#" onclick="resetUpload()">Перевести другой файл</a>
+                            </div>
+                        </div>
+                        <div class="info_upload">
+                          <p>Поддерживаемые форматы:
+                              <span>
+                                  {% for format in supported_formats %}
+                                      {{ format }}{% if not forloop.last %}, {% endif %}
+                                  {% endfor %}
+                              </span>
+                          </p>
+                      </div>
+                    </div>
+                </div>
+                
+                <!-- Translating Block (Hidden initially) -->
+                <div class="translating" id="translatingBlock">
+                    <div class="container">
+                        <div class="translating_block">
+                            <div class="title">
+                                <h2>Переводим...</h2>
+                            </div>
+                            <div class="block_translated">
+                                <div class="all_file">
+                                    <div class="pdf_file" id="progressBar">
+                                        <p><img src="{% static 'img/File1.svg' %}" alt="File Icon"> <span id="translatingFileName">Report.pdf</span></p>
+                                    </div>
+                                    <div class="page_pdf">
+                                        <h4><span id="translatedPages">0/20</span> страниц</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="btn_cancel">
+                                <button type="button" onclick="cancelTranslation()">Отменить</button>
+                            </div>
+                        </div>
+                        <div class="info_upload">
+                          <p>Поддерживаемые форматы:
+                              <span>
+                                  {% for format in supported_formats %}
+                                      {{ format }}{% if not forloop.last %}, {% endif %}
+                                  {% endfor %}
+                              </span>
+                          </p>
+                      </div>
+                    </div>
+                </div>
+                
+                <!-- File Translated Block (Hidden initially) -->
+                <div class="file_translated" id="fileTranslatedBlock">
+                    <div class="container">
+                        <div class="block_uploaded">
+                            <div class="title_uploaded">
+                                <div class="img_done">
+                                    <img src="{% static 'img/check.png' %}" alt="Check Icon">
+                                </div>
+                                <h2 class="done_text">Ваш файл готов!</h2>
+                                <p>Если скачивание не началось автоматически, нажмите кнопку ниже</p>
+                            </div>
+                            <div class="btn_file_uploaded">
+                                <a id="downloadLink" href="#" class="download-btn" target="_blank">Скачать файл</a>
+                                <a href="#" onclick="resetUpload()">Перевести другой файл</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+
+            <div class="history_file">
+                <div class="container">
+                    <div class="title_history">
+                        <h2>История переводов</h2>
+                    </div>
+                    <div class="table_history">
+                        <table class="document-table">
+                            <thead>
+                                <tr>
+                                    <th>Название</th>
+                                    <th>Язык</th>
+                                    <th>Вес файла</th>
+                                    <th>Дата</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                              {% for document in page_obj %}
+                              <tr>
+                                  <td>{{ document.title }}</td>
+                                  <td>{{ document.get_translation_language_display }}</td>
+                                  <td>
+                                      {% if document.original_file %}
+                                          {{ document.original_file.size|filesizeformat }}
+                                      {% else %}
+                                          N/A
+                                      {% endif %}
+                                  </td>
+                                  <td>{{ document.uploaded_at|date:"d.m.Y" }}</td>
+                                  <td>
+                                    {% if document.translated_file %}
+                                        <a href="{{ document.translated_file.url }}" class="download-btn" target="_blank">Скачать перевод</a>
+                                    {% else %}
+                                        <a href="{{ document.original_file.url }}" class="download-btn" target="_blank">Скачать</a>
+                                    {% endif %}
+                                  </td>
+                              </tr>
+                              {% endfor %}
+                          </tbody>
+                        </table>
+                        <div class="pagination">
+                            {% if page_obj.has_previous %}
+                            <a href="?page=1">&laquo; Первая</a>
+                            <a href="?page={{ page_obj.previous_page_number }}">Назад</a>
+                            {% endif %}
+                            <span class="current">Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
+                            {% if page_obj.has_next %}
+                            <a href="?page={{ page_obj.next_page_number }}">Вперёд</a>
+                            <a href="?page={{ page_obj.paginator.num_pages }}">Последняя &raquo;</a>
+                            {% endif %}
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="history_file">
-              <div class="container">
-                  <div class="title_history">
-                      <h2>История переводов</h2>
-                  </div>
-                  <div class="table_history">
-                      <table class="document-table">
-                          <thead>
-                              <tr>
-                                  <th>Название</th>
-                                  <th>Язык перевода</th>
-                                  <th>Вес файла</th>
-                                  <th>Дата</th>
-                                  <th></th>
-                              </tr>
-                          </thead>
-                          <tbody>
-                            {% for document in page_obj %}
-                            <tr>
-                                <td>{{ document.title }}</td>
-                                <td>{{ document.get_translation_language_display }}</td>
-                                <td>
-                                    {% if document.original_file %}
-                                        {{ document.original_file.size|filesizeformat }}
-                                    {% else %}
-                                        N/A
-                                    {% endif %}
-                                </td>
-                                <td>{{ document.uploaded_at|date:"d.m.Y" }}</td>
-                                <td>
-                                  {% if document.translated_file %}
-                                      <a href="{{ document.translated_file.url }}" class="download-btn" target="_blank">Скачать перевод</a>
-                                  {% else %}
-                                      <a href="{{ document.original_file.url }}" class="download-btn" target="_blank">Скачать</a>
-                                  {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                      </table>
-                      <div class="pagination">
-                          {% if page_obj.has_previous %}
-                          <a href="?page=1">&laquo; Первая</a>
-                          <a href="?page={{ page_obj.previous_page_number }}">Назад</a>
-                          {% endif %}
-                          <span class="current">Страница {{ page_obj.number }} из {{ page_obj.paginator.num_pages }}</span>
-                          {% if page_obj.has_next %}
-                          <a href="?page={{ page_obj.next_page_number }}">Вперёд</a>
-                          <a href="?page={{ page_obj.paginator.num_pages }}">Последняя &raquo;</a>
-                          {% endif %}
-                      </div>
-                  </div>
-              </div>
-          </div>          
         </main>
-    </div>
 
     <script src="{% static 'js/main.js' %}"></script>
 </body>

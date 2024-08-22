@@ -1,3 +1,5 @@
+# umetex_config/urls.py
+
 """
 URL configuration for umetex_config project.
 
@@ -14,8 +16,7 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-from django.contrib import admin
-from django.urls import path, include
+from django.urls import path
 from django.conf import settings
 from django.conf.urls.static import static
 from rest_framework.routers import DefaultRouter
@@ -26,9 +27,8 @@ router = DefaultRouter()
 router.register(r'documents', views.DocumentViewSet)
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('api/', include(router.urls)),  # API endpoints
-    path('', views.index, name='index'),  # React frontend
+    path('', views.index, name='index'),  # Assuming index.html is your main page
+    path('upload/', views.upload_document, name='upload_document'),  # URL for uploading documents
 ]
 
 if settings.DEBUG:
