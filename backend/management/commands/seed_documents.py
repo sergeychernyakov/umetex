@@ -1,4 +1,4 @@
-# backend/management/commands/seed_documents.py
+# backend/management/commands/`seed_documents`.py
 
 from django.core.management.base import BaseCommand
 from backend.models import Document
