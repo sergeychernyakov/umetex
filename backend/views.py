@@ -1,5 +1,8 @@
 # backend/views.py
 
+import os
+import json
+import threading
 from rest_framework import viewsets
 from django.conf import settings
 from django.shortcuts import render
@@ -33,6 +36,12 @@ def index(request):
         }
     )
 
+def async_translate(document):
+    """
+    Function to perform translation asynchronously.
+    """
+    document.translate()  # Perform the translation
+
 @csrf_exempt
 def upload_document(request):
     if request.method == 'POST' and request.FILES.get('document'):
@@ -44,16 +53,22 @@ def upload_document(request):
         )
         new_document.save()
 
-        # Call the translate method to generate and save the translated file
-        new_document.translate()
-
-        # Simulate total pages for progress simulation
-        total_pages = 20  # Example, replace with actual logic
+        # Start the translation in a separate thread
+        translation_thread = threading.Thread(target=async_translate, args=(new_document,))
+        translation_thread.start()
 
         return JsonResponse({
+            'document_id': new_document.pk,
             'success': True,
-            'file_name': new_document.title,
-            'translated_file_url': new_document.translated_file.url,
-            'total_pages': total_pages,
+            'file_name': new_document.title
         })
     return JsonResponse({'success': False})
+
+def check_translation_progress(request, document_id):
+    progress_file = os.path.join(settings.MEDIA_ROOT, f'{document_id}', f'{document_id}_progress.json')
+    if os.path.exists(progress_file):
+        with open(progress_file, 'r') as f:
+            progress_data = json.load(f)
+        return JsonResponse(progress_data)
+    else:
+        return JsonResponse({"error": "Progress not available"}, status=404)

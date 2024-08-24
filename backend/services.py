@@ -4,12 +4,11 @@ import re
 import os
 import fitz  # PyMuPDF
 from openai import OpenAI
-from fpdf import FPDF
 from django.conf import settings
 import django
-from typing import Tuple, Optional, List, Dict
-from fpdf import FPDF
+from typing import Tuple, Optional, List
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +19,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "umetex_config.settings")
 django.setup()
 
 class PDFTranslator:  
-    def __init__(self, document, temperature=0.2, max_tokens=2000):
+    def __init__(self, document, temperature=0.2, max_tokens=4096):
         """
         Initialize the PDFTranslator with a Document instance.
 
@@ -36,13 +35,13 @@ class PDFTranslator:
         self.max_tokens = max_tokens
         self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
-    def translate_texts(self, texts: List[str]) -> Dict[str, str]:
+    def translate_texts(self, texts: List[str]) -> List[Optional[str]]:
         """
         Translate an array of messages using the OpenAI API and extract translations
         based on predefined patterns.
 
         :param texts: List of text messages to translate.
-        :return: Dictionary with extracted translation data.
+        :return: List of extracted translation data.
         """
         patterns = {
             f"text_{i}": rf"text_{i}: \[([^\]]*?)\]" for i in range(len(texts))
@@ -72,7 +71,7 @@ class PDFTranslator:
 
         return extracted_data
 
-    def translate_text(self, prompt: str, message: str):
+    def translate_text(self, prompt: str, message: str) -> str:
         """
         Translate text using the OpenAI API.
 
@@ -106,76 +105,62 @@ class PDFTranslator:
         Recreate the PDF by copying each page from the original PDF into a new PDF
         and replacing all text with translated text using redaction annotations, retaining formatting.
 
-        This method extracts all text from the original PDF, splits it into chunks of up to 20 messages,
-        translates these chunks using the translate_texts method, and then applies the translations back
-        onto the new PDF file.
-
         :return: Path to the translated PDF file.
         """
         original_pdf = fitz.open(self.original_pdf_path)
         translated_pdf = fitz.open()
-
-        # List to store all text messages extracted from the PDF
+        total_pages = len(original_pdf)
         all_texts = []
 
+        self.update_progress(1, total_pages)
+
         # Step 1: Extract all text from the original PDF
-        for page_number in range(len(original_pdf)):
+        for page_number in range(total_pages):
             original_page = original_pdf[page_number]
             text_dict = original_page.get_text("dict")
-
             for block in text_dict['blocks']:
-                if block['type'] == 0:  # Process only text blocks
+                if block['type'] == 0:
                     for line in block['lines']:
                         for span in line['spans']:
                             original_text = span["text"].strip()
-                            if original_text:
-                                # Check if the text contains actual characters for translation
-                                if re.search(r'[A-Za-z0-9]', original_text):
-                                    all_texts.append(original_text)
-                                else:
-                                    all_texts.append(None)  # Mark as None if no translation is needed
+                            if original_text and re.search(r'[A-Za-z0-9]', original_text):
+                                all_texts.append(original_text)
+                            # else:
+                            #     all_texts.append(None)  # Mark as None if no translation is needed
+                                    
+        # Step 2: Translate texts
+        translated_texts = self.translate_texts(all_texts)
 
-
-        # Step 2: Translate texts in chunks of up to 20
-        translated_texts = self.translate_texts([text for text in all_texts if text])
-
-        # Step 3: Apply translations back to a new PDF
+        # Step 3: Apply translations and update progress
         text_index = 0
-        for page_number in range(1):
+        for page_number in range(total_pages):
             original_page = original_pdf[page_number]
             new_page = translated_pdf.new_page(width=original_page.rect.width, height=original_page.rect.height)
             new_page.show_pdf_page(new_page.rect, original_pdf, page_number)
             text_dict = original_page.get_text("dict")
-
             for block in text_dict['blocks']:
-                if block['type'] == 0:  # Process only text blocks
+                if block['type'] == 0:
                     for line in block['lines']:
                         for span in line['spans']:
                             original_text = span["text"].strip()
-                                
                             bbox = fitz.Rect(span["bbox"])
                             fontname = 'Helv'
                             font_size = span.get("size", 12)
                             color = self.normalize_color(span.get("color", 0))
 
-                            # Check if text requires translation and replace if translated
                             if re.search(r'[A-Za-z0-9]', original_text):
                                 translated_text = translated_texts[text_index] if text_index < len(translated_texts) else original_text
                                 text_index += 1
                             else:
                                 translated_text = original_text
 
-                            # Add redaction annotation with the translated text
                             fmt = "{:g} {:g} {:g} rg /{f:s} {s:g} Tf"
                             da_str = fmt.format(*color, f=fontname, s=font_size)
-                            new_page._add_redact_annot(
-                                quad=bbox,
-                                text=translated_text, 
-                                da_str=da_str
-                            )
-
-            # Apply redactions to replace text
+                            new_page._add_redact_annot(quad=bbox, text=translated_text, da_str=da_str)
             new_page.apply_redactions()
+
+            # Update progress
+            self.update_progress(page_number + 1, total_pages)
 
         translated_pdf.save(self.translated_file_path)
         translated_pdf.close()
@@ -186,6 +171,22 @@ class PDFTranslator:
 
         logger.debug(f"Recreated file saved at: {self.translated_file_path}")
         return self.translated_file_path
+
+    def update_progress(self, current_page: int, total_pages: int):
+        """
+        Update the progress of the translation.
+        
+        :param current_page: Current page number being translated.
+        :param total_pages: Total number of pages in the document.
+        """
+        progress_data = {
+            "document_id": self.document.pk,
+            "current_page": current_page,
+            "total_pages": total_pages
+        }
+        progress_file = os.path.join(settings.MEDIA_ROOT, f'{self.document.pk}', f'{self.document.pk}_progress.json')
+        with open(progress_file, 'w') as f:
+            json.dump(progress_data, f)
 
     @staticmethod
     def normalize_color(color: Optional[int]) -> Tuple[float, float, float]:

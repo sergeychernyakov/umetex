@@ -132,6 +132,25 @@ class Document(models.Model):
         translator = PDFTranslator(self)
         translator.translate_pdf()  # Perform the translation and get the file name
 
+    # def translate(self):
+    #     from fpdf import FPDF
+
+    #     document_dir = os.path.join(settings.MEDIA_ROOT, str(self.pk))
+    #     translations_dir = os.path.join(document_dir, 'translations')
+    #     os.makedirs(translations_dir, exist_ok=True)
+
+    #     translated_file_name = f"translated_{self.pk}.pdf"
+    #     translated_file_path = os.path.join(translations_dir, translated_file_name)
+
+    #     pdf = FPDF()
+    #     pdf.add_page()
+    #     pdf.set_font("Arial", size=12)
+    #     pdf.cell(200, 10, txt=f"Translated: {self.title}", ln=True, align='C')
+    #     pdf.output(translated_file_path)
+
+    #     self.translated_file.name = f'{self.pk}/translations/{translated_file_name}'
+    #     self.save()
+
 @receiver(post_delete, sender=Document)
 def delete_files_on_document_delete(sender, instance, **kwargs):
     if instance.original_file:

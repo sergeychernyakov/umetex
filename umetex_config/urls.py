@@ -29,6 +29,7 @@ router.register(r'documents', views.DocumentViewSet)
 urlpatterns = [
     path('', views.index, name='index'),  # Assuming index.html is your main page
     path('upload/', views.upload_document, name='upload_document'),  # URL for uploading documents
+    path('progress/<int:document_id>/', views.check_translation_progress, name='check_translation_progress'),
 ]
 
 if settings.DEBUG:
