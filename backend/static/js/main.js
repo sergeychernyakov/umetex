@@ -28,7 +28,18 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-  
+
+    // Utility function to truncate long file names
+    function truncateFileName(fileName) {
+        const maxLength = 15; // Set max length for file name
+        const extLength = 7;  // Set length to keep from the end, including the extension
+        if (fileName.length > maxLength) {
+            const start = fileName.substring(0, maxLength - extLength);
+            const end = fileName.substring(fileName.length - extLength);
+            return `${start}..${end}`;
+        }
+        return fileName;
+    }
     // Drag-and-drop functionality
     uploadContainer.addEventListener('dragover', (e) => {
         e.preventDefault();
@@ -76,7 +87,7 @@ document.addEventListener('DOMContentLoaded', function() {
   
         // Hide the file uploaded block, show translating block
         toggleVisibility(translatingBlock);
-        translatingFileName.textContent = uploadedFileName.textContent;
+        translatingFileName.textContent = truncateFileName(uploadedFileName.textContent);
   
         fetch(uploadForm.action, {
             method: 'POST',
@@ -100,8 +111,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function simulateTranslationProgress(data) {
         let currentPage = 0;
         let totalPages = data.total_pages;
-        let progressPercentage = 35; // Start at 35%
-        const progressStep = (65 / totalPages); // Remaining 65% distributed across total pages
+        let progressPercentage = 40; // Start at 35%
+        const progressStep = (60 / totalPages); // Remaining 65% distributed across total pages
   
         // Set the initial width of the progress bar to 35%
         progressBar.style.width = `${progressPercentage}%`;

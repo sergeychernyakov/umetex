@@ -19,7 +19,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "umetex_config.settings")
 # Now set up Django
 django.setup()
 
-class PDFTranslator:  
+class PDFTranslator:
     def __init__(self, document, temperature=0.2, max_tokens=2000):
         """
         Initialize the PDFTranslator with a Document instance.
@@ -36,13 +36,13 @@ class PDFTranslator:
         self.max_tokens = max_tokens
         self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
-    def translate_texts(self, texts: List[str]) -> Dict[str, str]:
+    def translate_texts(self, texts: List[str]) -> List[Optional[str]]:
         """
         Translate an array of messages using the OpenAI API and extract translations
         based on predefined patterns.
 
         :param texts: List of text messages to translate.
-        :return: Dictionary with extracted translation data.
+        :return: List of extracted translation data.
         """
         patterns = {
             f"text_{i}": rf"text_{i}: \[([^\]]*?)\]" for i in range(len(texts))
@@ -54,7 +54,7 @@ class PDFTranslator:
         for i, text in enumerate(texts):
             message += f"text_{i}: [{{text_{i}}}] with the translated text: [{text}]\n "
 
-        # Initialize the dictionary to hold the extracted data
+        # Initialize the list to hold the extracted data
         extracted_data = []
 
         # Translate combined texts
@@ -63,7 +63,6 @@ class PDFTranslator:
         # Extract and filter matches for each pattern, and strip spaces from the strings
         for key, pattern in patterns.items():
             matches = re.findall(pattern, translated_text)
-            # Keep the first non-empty match, if any, otherwise keep it as an empty string
             non_empty_matches = [match.strip() for match in matches if match.strip()]
             if non_empty_matches:
                 extracted_data.append(non_empty_matches[0])
@@ -72,7 +71,7 @@ class PDFTranslator:
 
         return extracted_data
 
-    def translate_text(self, prompt: str, message: str):
+    def translate_text(self, prompt: str, message: str) -> str:
         """
         Translate text using the OpenAI API.
 
@@ -83,8 +82,8 @@ class PDFTranslator:
         if len(prompt) == 0 or len(message) == 0:
             return ''
 
-        print(f"Sending prompt to OpenAI API: {prompt}")
-        print(f"Sending message to OpenAI API: {message}")
+        logger.debug(f"Sending prompt to OpenAI API: {prompt}")
+        logger.debug(f"Sending message to OpenAI API: {message}")
 
         response = self.client.chat.completions.create(
             model="gpt-4o",
@@ -97,7 +96,7 @@ class PDFTranslator:
         )
 
         translated_text = response.choices[0].message.content
-        print(f"Received response from OpenAI API: {translated_text}")
+        logger.debug(f"Received response from OpenAI API: {translated_text}")
 
         return translated_text
 
@@ -135,13 +134,12 @@ class PDFTranslator:
                                 else:
                                     all_texts.append(None)  # Mark as None if no translation is needed
 
-
         # Step 2: Translate texts in chunks of up to 20
         translated_texts = self.translate_texts([text for text in all_texts if text])
 
         # Step 3: Apply translations back to a new PDF
         text_index = 0
-        for page_number in range(1):
+        for page_number in range(len(original_pdf)):
             original_page = original_pdf[page_number]
             new_page = translated_pdf.new_page(width=original_page.rect.width, height=original_page.rect.height)
             new_page.show_pdf_page(new_page.rect, original_pdf, page_number)
@@ -216,12 +214,3 @@ if __name__ == "__main__":
 
     document.translate()
     print(f'self.translated_file : {document.translated_file}')
-
-    # pdf_translator = PDFTranslator(document=document)
-    # messages = [
-    #     "Purpose",
-    #     "The purpose of this document is to establish the Material Handling process and procedure for parts and finished medical devices thereby fulfilling the regulatory requirements as referenced in the Cynosure Quality Manual 931-QA01-001, as applicable.",
-    #     "931-QA01-001 Cynosure Quality Manual"
-    # ]
-    # extracted_data = pdf_translator.translate_texts(messages)
-    # print(f'Extracted dataL {extracted_data}')
