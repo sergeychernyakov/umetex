@@ -73,9 +73,6 @@ header .header_block .title_header h1 span {
 }
 
 /* File upload styles */
-.file_upload {
-  margin-bottom: 134px;
-}
 
 .file_upload .upload-container {
   text-align: center;
@@ -222,7 +219,6 @@ header .header_block .title_header h1 span {
   border-radius: 37px;
   padding: 12px 22px;
   color: #5FB248;
-  background-color: #E0F9D9;
   border: none;
   cursor: pointer;
 }
@@ -253,14 +249,11 @@ header .header_block .title_header h1 span {
 }
 
 /* File uploaded styles */
-.file_uploaded {
+.file_uploaded.active {
   margin-top: 63px;
   margin-bottom: 44px;
 }
 
-.file_uploaded .info_upload {
-  margin-bottom: 134px;
-}
 
 .file_uploaded .info_upload p {
   font-family: Inter;
@@ -459,14 +452,14 @@ header .header_block .title_header h1 span {
   position: relative;  /* Allows absolute positioning of child elements */
   display: flex;
   align-items: center;
-  width: 100%;
+  width: 90%;
   height: 104px;
   background: #F7F7F7;
   border-radius: 45px;
 }
 
 .translating .translating_block .block_translated .all_file .pdf_file {
-  width: 100%;  /* Takes up the full width */
+  width: 40%;  /* Takes up the full width */
   padding: 30px 44px;
   display: flex;
   align-items: center;
@@ -495,7 +488,6 @@ header .header_block .title_header h1 span {
   right: 20px;  /* Align it to the right */
   top: 50%;
   transform: translateY(-50%);  /* Center vertically */
-  background-color: rgba(255, 255, 255, 0.8);  /* Slightly translucent background */
   padding: 5px 10px;
   border-radius: 5px;
   z-index: 2;  /* Place it above the .pdf_file */
@@ -531,9 +523,6 @@ header .header_block .title_header h1 span {
   cursor: pointer;
 }
 
-.translating .info_upload {
-  margin-bottom: 134px;
-}
 
 .translating .info_upload p {
   font-family: Inter;
@@ -541,7 +530,6 @@ header .header_block .title_header h1 span {
   font-weight: 400;
   line-height: 29.05px;
   text-align: center;
-  margin-top: 44px;
 }
 
 .translating .info_upload p span {
@@ -555,17 +543,12 @@ header .header_block .title_header h1 span {
   margin-bottom: 44px;
 }
 
-.file_translated .info_upload {
-  margin-bottom: 134px;
-}
-
 .file_translated .info_upload p {
   font-family: Inter;
   font-size: 24px;
   font-weight: 400;
   line-height: 29.05px;
   text-align: center;
-  margin-top: 44px;
 }
 
 .file_translated .info_upload p span {
@@ -890,4 +873,81 @@ header .header_block .title_header h1 span {
 .file_translated .block_uploaded .btn_file_uploaded .download-btn:hover {
   background: linear-gradient(96.19deg, #48B29F -18.32%, #5FB248 130.36%);
   color: #fff; /* Keep text color white on hover */
+}
+
+#translationForm {
+    max-height: 700px;
+}
+
+/* Add transitions for smooth block visibility change */
+.file_upload,
+.file_uploaded,
+.translating,
+.file_translated {
+    opacity: 0;
+    visibility: hidden;
+    max-height: 0;
+    overflow: hidden;
+    transition: opacity 0.5s ease, visibility 0.5s ease, max-height 0.5s ease;
+}
+
+.file_upload.active,
+.file_uploaded.active,
+.translating.active,
+.file_translated.active {
+    opacity: 1;
+    visibility: visible;
+    max-height: 700px; /* Adjust to a value large enough to cover the largest content */
+}
+
+#progressBar {
+    position: relative;
+    width: 100%;
+    padding: 30px 44px;
+    display: flex;
+    align-items: center;
+    background: #5FB248;  /* Base background color */
+    border-radius: 44px;
+    overflow: hidden;  /* Ensures content stays inside the border radius */
+    z-index: 1;  /* Ensure it's above other elements */
+}
+
+#progressBar::before {
+    content: "";  /* Creates a pseudo-element to display animated stripes */
+    position: absolute;  /* Positions it relative to the #progressBar */
+    top: 0;  /* Aligns the top edge of the pseudo-element with the top of #progressBar */
+    left: 0;  /* Aligns the left edge of the pseudo-element with the left of #progressBar */
+    width: 1000%;  /* Extends beyond the visible area for a smooth animation effect */
+    height: 100%;  /* Matches the height of the #progressBar */
+    background: repeating-linear-gradient(
+        135deg,  /* Sets the angle of the stripes, creating diagonal lines */
+        rgba(255, 255, 255, 0.2) 0,  /* Light semi-transparent color for stripes */
+        rgba(255, 255, 255, 0.2) 40px,  /* Width of the light stripe */
+        transparent 40px,  /* Start of the transparent part */
+        transparent 80px  /* Width of the transparent part */
+    );
+    animation: moveStripesLeftToRight 3s linear infinite;  /* Defines the animation to move stripes from left to right continuously */
+    z-index: 0;  /* Places the pseudo-element below the actual content of #progressBar */
+}
+
+#progressBar p {
+    z-index: 1;  /* Ensures the text is displayed above the animated stripes */
+    position: relative;  /* Makes the text position relative to its normal position */
+    font-family: Inter;  /* Sets the font family for the text */
+    font-size: 24px;  /* Sets the size of the text */
+    font-weight: 400;  /* Normal font weight */
+    line-height: 29.05px;  /* Sets the line height for spacing */
+    text-align: center;  /* Centers the text inside the progress bar */
+    color: #fff;  /* Sets the text color to white */
+    display: flex;  /* Uses flexbox for alignment */
+    align-items: center;  /* Vertically centers the text within the #progressBar */
+}
+
+@keyframes moveStripesLeftToRight {
+    from {
+        background-position: 0 0;  /* Starts the stripes from the left edge */
+    }
+    to {
+        background-position: 200px 0;  /* Moves the background position to the right, creating the animation effect */
+    }
 }

@@ -47,11 +47,17 @@ class PDFTranslator:
             f"text_{i}": rf"text_{i}: \[([^\]]*?)\]" for i in range(len(texts))
         }
 
-        prompt = f"You are a helpful assistant for translating documents to {self.document.translation_language}."
-        message = "This is a set of texts from a medical document. Translate each text to the target language, and replace the placeholders with corresponding translations:\n\n"
+        # Enhanced prompt to guide the translation process
+        prompt = f"You are a helpful assistant for translating documents into {self.document.translation_language}."
+        message = (
+            "The following is a list of text segments extracted from a medical document. "
+            "Translate each text segment into the target language, ensuring that each translation directly replaces the placeholder "
+            "and retains the same numbering format for consistency. Please only provide the translated text within the brackets.\n\n"
+        )
 
         for i, text in enumerate(texts):
-            message += f"text_{i}: [{{text_{i}}}] with the translated text: [{text}]\n "
+            # Updated message format to reinforce consistency in translation output
+            message += f"text_{i}: [{text}]\n"
 
         # Initialize the dictionary to hold the extracted data
         extracted_data = []
@@ -110,41 +116,52 @@ class PDFTranslator:
         original_pdf = fitz.open(self.original_pdf_path)
         translated_pdf = fitz.open()
         total_pages = len(original_pdf)
-        all_texts = []
+        self.update_progress(1, total_pages) # don't remove that
 
-        self.update_progress(1, total_pages)
+        # Register the custom Arial font
+        font_path = os.path.join(settings.BASE_DIR, 'fonts', 'Arial.ttf')
+        if not os.path.exists(font_path):
+            logger.error(f"Font file not found at {font_path}")
+            return
 
-        # Step 1: Extract all text from the original PDF
+        fontname = 'Arial'
+
+        # Register font
+        arial_font = fitz.Font(fontname=fontname, fontfile=font_path)
+
         for page_number in range(total_pages):
+            logger.debug(f"Processing page {page_number + 1} of {total_pages}")
+
             original_page = original_pdf[page_number]
+            new_page = translated_pdf.new_page(width=original_page.rect.width, height=original_page.rect.height)
+            
+            new_page.insert_font(fontname=fontname, fontbuffer=arial_font.buffer, fontfile=font_path)
+            
+            new_page.show_pdf_page(new_page.rect, original_pdf, page_number)
+
             text_dict = original_page.get_text("dict")
+            page_texts = []  # Reset text list for each page
+
+            # Extract text from the current page
             for block in text_dict['blocks']:
-                if block['type'] == 0:
+                if block['type'] == 0:  # Text block
                     for line in block['lines']:
                         for span in line['spans']:
                             original_text = span["text"].strip()
                             if original_text and re.search(r'[A-Za-z0-9]', original_text):
-                                all_texts.append(original_text)
-                            # else:
-                            #     all_texts.append(None)  # Mark as None if no translation is needed
-                                    
-        # Step 2: Translate texts
-        translated_texts = self.translate_texts(all_texts)
+                                page_texts.append(original_text)
 
-        # Step 3: Apply translations and update progress
-        text_index = 0
-        for page_number in range(total_pages):
-            original_page = original_pdf[page_number]
-            new_page = translated_pdf.new_page(width=original_page.rect.width, height=original_page.rect.height)
-            new_page.show_pdf_page(new_page.rect, original_pdf, page_number)
-            text_dict = original_page.get_text("dict")
+            # Translate extracted texts from the current page
+            translated_texts = self.translate_texts(page_texts)
+
+            # Apply translated texts back to the current page
+            text_index = 0
             for block in text_dict['blocks']:
-                if block['type'] == 0:
+                if block['type'] == 0:  # Text block
                     for line in block['lines']:
                         for span in line['spans']:
                             original_text = span["text"].strip()
                             bbox = fitz.Rect(span["bbox"])
-                            fontname = 'Helv'
                             font_size = span.get("size", 12)
                             color = self.normalize_color(span.get("color", 0))
 
@@ -155,13 +172,22 @@ class PDFTranslator:
                                 translated_text = original_text
 
                             fmt = "{:g} {:g} {:g} rg /{f:s} {s:g} Tf"
-                            da_str = fmt.format(*color, f=fontname, s=font_size)
-                            new_page._add_redact_annot(quad=bbox, text=translated_text, da_str=da_str)
-            new_page.apply_redactions()
+                            da_str = fmt.format(*color, f='helv', s=font_size)
+                            logger.debug(f"Adding redaction annotation on page {page_number + 1}")
+                            new_page._add_redact_annot(quad=bbox, da_str=da_str)
 
-            # Update progress
+                            
+                            new_page.apply_redactions()  # Apply changes per page
+
+                            # Draw the translated text with the Arial font
+                            new_page.insert_text(bbox.tl, translated_text, fontsize=font_size, fontname=fontname, fontfile=font_path, color=color)
+
+            # Update progress after translating each page
             self.update_progress(page_number + 1, total_pages)
 
+        # Save the translated PDF
+        logger.debug(f"Saving translated PDF to {self.translated_file_path}")
+        # translated_pdf.subset_fonts()
         translated_pdf.save(self.translated_file_path)
         translated_pdf.close()
         original_pdf.close()
@@ -211,7 +237,7 @@ if __name__ == "__main__":
     from backend.models import Document
 
     # Assume we have a Document instance
-    document = Document.objects.get(pk=139)
+    document = Document.objects.get(pk=193)
 
     print(document.translation_language)
 

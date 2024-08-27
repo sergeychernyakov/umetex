@@ -85,7 +85,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle form submission when the "Начать перевод" button is clicked
     window.startTranslation = function() {
         const formData = new FormData(uploadForm);
-        console.log('!!!!!!!!! startTranslation');
+
         // Hide the file uploaded block, show translating block
         toggleVisibility(translatingBlock);
         translatingFileName.textContent = truncateFileName(uploadedFileName.textContent);
@@ -105,17 +105,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 alert('Failed to start translation');
             }
         })
-        // .catch(error => console.error('Error:', error));
+        .catch(error => console.error('Error:', error));
     }
 
     function startRealTranslationProgress(data) {
         let currentPage = 0;
         let totalPages = 1;
         let documentId = data.document_id;
-        console.log('!!!!!!!!! startRealTranslationProgress');
-        console.log(documentId);
-
-
         translationInterval = setInterval(() => {
             fetch(`/progress/${documentId}/`)
                 .then(response => response.json())
@@ -127,15 +123,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         currentPage = data.current_page;
                         totalPages = data.total_pages;
     
-                        translatedPages.textContent = `${currentPage}/${totalPages} страниц`;
+                        translatedPages.textContent = `${currentPage}/${totalPages}`;
                         let progressPercentage = 40 + ((currentPage / totalPages) * 60);
                         progressBar.style.width = `${progressPercentage}%`;
     
                         if (currentPage >= totalPages) {
                             clearInterval(translationInterval);
-
                             showTranslationComplete(`/media/${documentId}/translations/translated_${documentId}.pdf`);
-
                         }
                     }
                 })
