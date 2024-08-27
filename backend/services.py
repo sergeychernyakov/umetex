@@ -190,7 +190,7 @@ class PDFTranslator:
                             rotate_angle = self.calculate_rotation_angle(dir_x, dir_y)
 
                             # Get font name and path
-                            fontname = span.get("font", "Arial")
+                            fontname = self.clean_font_name(span.get("font", "Arial"))
                             font_path = self.find_font_path(fontname)
 
                             # Check if the font file exists
@@ -246,6 +246,17 @@ class PDFTranslator:
 
         logger.debug(f"Recreated file saved at: {self.translated_file_path}")
         return self.translated_file_path
+
+    def clean_font_name(self, fontname: str) -> str:
+        """
+        Clean up font name to ensure it is valid for use in PyMuPDF's insert_font method.
+
+        :param fontname: Original font name from the PDF.
+        :return: Cleaned font name suitable for PyMuPDF.
+        """
+        # Replace spaces and special characters with underscores
+        cleaned_fontname = re.sub(r'[^A-Za-z0-9]', '_', fontname)
+        return cleaned_fontname
 
     def calculate_rotation_angle(self, dir_x: float, dir_y: float) -> int:
         """

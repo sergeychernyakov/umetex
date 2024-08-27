@@ -133,6 +133,17 @@ class PDFTranslator:
 
         return translated_text
 
+    def clean_font_name(self, fontname: str) -> str:
+        """
+        Clean up font name to ensure it is valid for use in PyMuPDF's insert_font method.
+
+        :param fontname: Original font name from the PDF.
+        :return: Cleaned font name suitable for PyMuPDF.
+        """
+        # Replace spaces and special characters with underscores
+        cleaned_fontname = re.sub(r'[^A-Za-z0-9]', '_', fontname)
+        return cleaned_fontname
+
     def translate_pdf(self) -> str:
         """
         Recreate the PDF by copying each page from the original PDF into a new PDF
@@ -143,7 +154,7 @@ class PDFTranslator:
         original_pdf = fitz.open(self.original_pdf_path)
         translated_pdf = fitz.open()
         total_pages = len(original_pdf)
-        self.update_progress(1, total_pages) # don't remove that
+        self.update_progress(1, total_pages)  # don't remove that
 
         for page_number in range(1):
             logger.debug(f"Processing page {page_number + 1} of {total_pages}")
@@ -163,7 +174,6 @@ class PDFTranslator:
                             original_text = span["text"].strip()
                             if original_text and re.search(r'[A-Za-z0-9]', original_text):
                                 page_texts.append(original_text)
-                                logger.debug(f"Extracted original text: {original_text}")
 
             # Translate extracted texts from the current page
             translated_texts = self.translate_texts(page_texts)
@@ -176,18 +186,19 @@ class PDFTranslator:
                         for span in line['spans']:
                             original_text = span["text"].strip()
                             bbox = fitz.Rect(span["bbox"])
-                            font_size = round(span.get("size", 12))
+                            font_size = round(span.get("size", 12)) - 2
                             color = self.normalize_color(span.get("color", 0))
                             origin = span.get("origin", (0, 0))
                             ascender = span.get("ascender", 0)
                             descender = span.get("descender", 0)
-                            
+
                             # Determine the rotation angle based on the direction
-                            dir_x, dir_y = span.get('dir', (1.0, 0.0))
-                            rotate_angle = 0 if dir_x == 1.0 else 90
+                            dir_x, dir_y = line.get('dir', (1.0, 0.0))
+                            rotate_angle = self.calculate_rotation_angle(dir_x, dir_y)
 
                             # Get font name and path
                             fontname = span.get("font", "Arial")
+                            cleaned_fontname = self.clean_font_name(fontname)  # Clean the font name
                             font_path = self.find_font_path(fontname)
 
                             # Check if the font file exists
@@ -196,12 +207,11 @@ class PDFTranslator:
                                 fontname = 'Arial'
                                 font_path = os.path.join(self.fonts_dir, 'Arial.ttf')
 
-                            # Register the font dynamically
-                            new_page.insert_font(fontname=fontname, fontfile=font_path)
+                            # Register the font dynamically using cleaned font name
+                            new_page.insert_font(fontname=cleaned_fontname, fontfile=font_path)
 
                             if re.search(r'[A-Za-z0-9]', original_text):
                                 translated_text = translated_texts[text_index] if text_index < len(translated_texts) else original_text
-                                logger.debug(f"Original text: {original_text}, Translated text: {translated_text}")
                                 text_index += 1
 
                                 fmt = "{:g} {:g} {:g} rg /{f:s} {s:g} Tf"
@@ -220,7 +230,7 @@ class PDFTranslator:
                                     point=adjusted_origin,
                                     text=translated_text,
                                     fontsize=font_size,
-                                    fontname=fontname,
+                                    fontname=cleaned_fontname,
                                     fontfile=font_path,
                                     color=color,
                                     rotate=rotate_angle,
@@ -235,7 +245,7 @@ class PDFTranslator:
         # Save the translated PDF
         logger.debug(f"Saving translated PDF to {self.translated_file_path}")
 
-        translated_pdf.save(self.translated_file_path, garbage=4, deflate=True)
+        translated_pdf.save(self.translated_file_path)
         translated_pdf.close()
         original_pdf.close()
 
@@ -244,6 +254,7 @@ class PDFTranslator:
 
         logger.debug(f"Recreated file saved at: {self.translated_file_path}")
         return self.translated_file_path
+
 
     def find_font_path(self, fontname: str) -> str:
         """
