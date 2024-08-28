@@ -111,8 +111,7 @@ class Document(models.Model):
         original_file_new_path = f'{self.pk}/originals/{original_file_new_name}'
         translated_file_new_path = f'{self.pk}/translations/{os.path.basename(self.translated_file.name)}' if self.translated_file else None
 
-        print(f"Original file new path: {original_file_new_path}")
-        print(f"Translated file new path: {translated_file_new_path}")
+        logger.debug(f"Original file new path: {original_file_new_path}")
 
         # Create directories for original and translated files if they don't exist
         original_dir = os.path.join(settings.MEDIA_ROOT, f'{self.pk}/originals/')

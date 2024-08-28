@@ -3,30 +3,20 @@
 import re
 import os
 import fitz  # PyMuPDF
-from openai import OpenAI
 from django.conf import settings
-import django
 from typing import Tuple, Optional, List, Dict
 import logging
 import json
-import random
 import math
-from fontTools.ttLib import TTFont
-from django.db.models import Q
-from backend.models.document import LANGUAGES, TEXT_ENCODING_CYRILLIC
+# from django.db.models import Q
+from backend.models import Document
+from backend.services.text_translator import TextTranslator
+from backend.services.font_manager import FontManager
 
 logger = logging.getLogger(__name__)
 
-# Ensure the Django settings module is configured
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "umetex_config.settings")
-
-# Now set up Django
-django.setup()
-
 class PDFTranslator:
-    cyrillic_support_cache: Dict[str, bool] = {}
-
-    def __init__(self, document, temperature=0, max_tokens=4096):
+    def __init__(self, document: Document):
         """
         Initialize the PDFTranslator with a Document instance.
 
@@ -38,109 +28,8 @@ class PDFTranslator:
         self.translations_dir = os.path.join(settings.MEDIA_ROOT, str(document.pk), 'translations')
         os.makedirs(self.translations_dir, exist_ok=True)
         self.translated_file_path = os.path.join(self.translations_dir, self.translated_file_name)
-        self.temperature = temperature
-        self.max_tokens = max_tokens
-        self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
-        self.fonts_dir = os.path.join(settings.BASE_DIR, 'fonts')
-
-    def translate_texts(self, texts: List[str]) -> List[Optional[str]]:
-        """
-        Translate an array of messages using the OpenAI API and extract translations
-        based on predefined patterns.
-
-        :param texts: List of text messages to translate.
-        :return: List of extracted translation data.
-        """
-        # Regular expression to detect non-translatable segments (document numbers, section numbers)
-        non_translatable_pattern = re.compile(r"^\s*[\d\-\/.:]+[\d\w\-\/.:]*\s*$")
-
-        # Filter out non-translatable segments but keep their positions
-        translatable_texts = []
-        indices_mapping = []  # To map filtered texts back to their original position
-        all_texts = [None] * len(texts)  # To store both translated and non-translated texts
-
-        for i, text in enumerate(texts):
-            # Check if text is translatable (not just numbers or document codes)
-            if non_translatable_pattern.match(text):
-                # If it's not translatable, add it directly to the results
-                all_texts[i] = text
-                logger.debug(f"Keeping non-translatable text segment as is: text_{i}: [{text}]")
-            else:
-                translatable_texts.append(text)
-                indices_mapping.append(i)
-
-        # Shuffle the text segments to avoid order bias
-        shuffled_indices = list(range(len(translatable_texts)))
-        random.shuffle(shuffled_indices)
-        shuffled_texts = [translatable_texts[i] for i in shuffled_indices]
-
-        # Create patterns for extracted data
-        patterns = {
-            f"text_{indices_mapping[i]}": rf"text_{indices_mapping[i]}: \[([^\]]*?)\]" 
-            for i in shuffled_indices
-        }
-
-        # Enhanced prompt to guide the translation process
-        prompt = f"You are a helpful assistant for translating documents into {self.document.translation_language}."
-        message = (
-            "The following is a list of text segments extracted from a medical document. "
-            "Translate each text segment into the target language, ensuring that each translation directly replaces the placeholder "
-            "and retains the same numbering format for consistency. Please only provide the translated text within the brackets.\n\n"
-        )
-
-        for i, text in zip(shuffled_indices, shuffled_texts):
-            original_index = indices_mapping[i]
-            message += f"text_{original_index}: [{text}]\n"
-            logger.debug(f"Prepared shuffled text segment for translation: text_{original_index}: [{text}]")
-
-        # Initialize the dictionary to hold the extracted data
-        translated_text = self.translate_text(prompt, message)
-        logger.debug(f"Translated text received: {translated_text}")
-
-        # Extract and filter matches for each pattern, and strip spaces from the strings
-        for key, pattern in patterns.items():
-            matches = re.findall(pattern, translated_text)
-            logger.debug(f"Pattern for {key}: {pattern}, Matches found: {matches}")
-
-            # Get the original index from the pattern key
-            index = int(key.split('_')[1])
-            non_empty_matches = [match.strip() for match in matches if match.strip()]
-            if non_empty_matches:
-                all_texts[index] = non_empty_matches[0]
-            else:
-                print(f"No match found for text_{index}, keeping original text: {texts[index]}")
-                all_texts[index] = texts[index]  # Fallback to original if translation is missing
-
-        return all_texts
-
-    def translate_text(self, prompt: str, message: str) -> str:
-        """
-        Translate text using the OpenAI API.
-
-        :param prompt: The ChatGPT prompt.
-        :param message: The text to translate.
-        :return: Translated text.
-        """
-        if len(prompt) == 0 or len(message) == 0:
-            return ''
-
-        logger.debug(f"Sending prompt to OpenAI API: {prompt}")
-        logger.debug(f"Sending message to OpenAI API: {message}")
-
-        response = self.client.chat.completions.create(
-            model="gpt-4o",
-            messages=[
-                {"role": "system", "content": prompt},
-                {"role": "user", "content": message}
-            ],
-            temperature=self.temperature,
-            max_tokens=self.max_tokens
-        )
-
-        translated_text = response.choices[0].message.content
-        logger.debug(f"Received response from OpenAI API: {translated_text}")
-
-        return translated_text
+        self.translator = TextTranslator(self.document.translation_language)
+        self.font_manager = FontManager(self.document.translation_language)
 
     def translate_pdf(self) -> str:
         """
@@ -174,7 +63,7 @@ class PDFTranslator:
                                 page_texts.append(original_text)
 
             # Translate extracted texts from the current page
-            translated_texts = self.translate_texts(page_texts)
+            translated_texts = self.translator.translate_texts(page_texts)
 
             # Apply translated texts back to the current page
             text_index = 0
@@ -195,14 +84,14 @@ class PDFTranslator:
                             rotate_angle = self.calculate_rotation_angle(dir_x, dir_y)
 
                             # Get font name and path
-                            fontname = self.clean_font_name(span.get("font", "Arial"))
-                            font_path = self.find_font_path(fontname)
+                            fontname = self.font_manager.clean_font_name(span.get("font", "Arial"))
+                            font_path = self.font_manager.find_font_path(fontname)
 
                             # Check if the font file exists
                             if not os.path.exists(font_path):
                                 logger.warning(f"Font '{fontname}' not found. Using Arial as default.")
                                 fontname = 'Arial'
-                                font_path = os.path.join(self.fonts_dir, 'Arial.ttf')
+                                font_path = os.path.join(self.font_manager.fonts_dir, 'Arial.ttf')
 
                             # Register the font dynamically
                             new_page.insert_font(fontname=fontname, fontfile=font_path)
@@ -252,17 +141,6 @@ class PDFTranslator:
         logger.debug(f"Recreated file saved at: {self.translated_file_path}")
         return self.translated_file_path
 
-    def clean_font_name(self, fontname: str) -> str:
-        """
-        Clean up font name to ensure it is valid for use in PyMuPDF's insert_font method.
-
-        :param fontname: Original font name from the PDF.
-        :return: Cleaned font name suitable for PyMuPDF.
-        """
-        # Replace spaces and special characters with underscores
-        cleaned_fontname = re.sub(r'[^A-Za-z0-9]', '_', fontname)
-        return cleaned_fontname
-
     def calculate_rotation_angle(self, dir_x: float, dir_y: float) -> int:
         """
         Calculate the rotation angle based on the text direction.
@@ -294,69 +172,6 @@ class PDFTranslator:
         # Log the calculated angle for debugging purposes
         return rotate_angle
 
-    def find_font_path(self, fontname: str) -> str:
-        """
-        Find the appropriate font file based on the provided font name by searching through available font files.
-        
-        :param fontname: The name of the font to find.
-        :return: Path to the font file if found, else default to Arial.
-        """
-        logger.debug(f"Searching for font: {fontname}")
-
-        # Normalize the font name by removing common suffixes, spaces, and converting to lowercase
-        normalized_fontname = re.sub(r'(MT|PSMT|[-\s]+)', '', fontname).lower()
-
-        best_match = None
-        best_match_score = 0
-        style_penalty = {
-            "bold": 2,
-            "italic": 2,
-            "bolditalic": 3
-        }
-        match_threshold = 1  # Minimum score to consider a font a good match
-
-        # Получаем список всех языков, поддерживающих кириллицу
-        cyrillic_languages = [lang[0] for lang in LANGUAGES if lang[2] == TEXT_ENCODING_CYRILLIC]
-
-        for root, _, files in os.walk(self.fonts_dir):
-            for file in files:
-                # Normalize the filename similarly to match against fontname
-                normalized_filename = re.sub(r'[-\s]+', '', file).lower().replace('.ttf', '').replace('.ttc', '').replace('.otf', '')
-
-                # Calculate match score based on name similarity
-                match_score = sum(part in normalized_filename for part in normalized_fontname.split('_'))
-
-                # Add penalties if the styles (bold/italic) do not match
-                if "bold" in normalized_fontname and "bold" not in normalized_filename:
-                    match_score -= style_penalty["bold"]
-                if "italic" in normalized_fontname and "italic" not in normalized_filename:
-                    match_score -= style_penalty["italic"]
-                if "bold" not in normalized_fontname and "bold" in normalized_filename:
-                    match_score -= style_penalty["bold"]
-                if "italic" not in normalized_fontname and "italic" in normalized_filename:
-                    match_score -= style_penalty["italic"]
-
-                # Update best match if this file has a better score
-                if match_score > best_match_score:
-                    best_match = os.path.join(root, file)
-                    best_match_score = match_score
-
-            if best_match and best_match_score >= match_threshold:
-                # Check for the cyrillic support
-                if self.document.translation_language in cyrillic_languages and not self.supports_cyrillic(best_match):
-                    logger.debug(f"Font '{fontname}' does not support Cyrillic. Using Arial as default.")
-                    return os.path.join(self.fonts_dir, 'Arial.ttf')
-                else:
-                    logger.debug(f"Best match found: {os.path.basename(best_match)} with score: {best_match_score}")
-                    break
-
-        # Use Arial if no match is found or if the best match score is below the threshold
-        if not best_match or best_match_score < match_threshold:
-            logger.error(f"Font '{fontname}' not found or match is too weak. Using Arial as default.")
-            return os.path.join(self.fonts_dir, 'Arial.ttf')
-
-        return best_match
-
     def update_progress(self, current_page: int, total_pages: int):
         """
         Update the progress of the translation.
@@ -386,36 +201,6 @@ class PDFTranslator:
         elif isinstance(color, tuple) and len(color) == 3:
             return tuple(c / 255.0 for c in color)
         return (0, 0, 0)  # Default to black if color is invalid
-
-    @staticmethod
-    def supports_cyrillic(font_path: str) -> bool:
-        """
-        Проверяет, поддерживает ли шрифт кириллицу с использованием кэширования.
-
-        :param font_path: Путь к файлу шрифта.
-        :return: True, если шрифт поддерживает кириллицу, иначе False.
-        """
-        # Check if the result is already cached
-        if font_path in PDFTranslator.cyrillic_support_cache:
-            return PDFTranslator.cyrillic_support_cache[font_path]
-
-        try:
-            font = TTFont(font_path)
-            # Кириллический диапазон Unicode: U+0400 to U+04FF
-            cyrillic_range = range(0x0400, 0x0500)
-
-            # Получаем список всех глифов (символов) в шрифте
-            for table in font['cmap'].tables:
-                if any(ord_char in cyrillic_range for ord_char in table.cmap.keys()):
-                    # Cache the result
-                    PDFTranslator.cyrillic_support_cache[font_path] = True
-                    return True
-        except Exception as e:
-            logger.error(f"Ошибка при проверке шрифта {font_path}: {e}")
-
-        # Cache the negative result
-        PDFTranslator.cyrillic_support_cache[font_path] = False
-        return False
 
     def __str__(self):
         return self.title
