@@ -17,7 +17,7 @@ class Command(BaseCommand):
         # Optional: Clears existing documents
         Document.objects.all().delete()
 
-        languages = [lang[0] for lang in Document.LANGUAGES]  # Extract language codes
+        languages = [lang[0] for lang in Document.LANGUAGES_CHOICES]  # Extract language codes
 
         for i in range(30):  # Change to 40 if you need 40 documents
             title = fake.sentence(nb_words=3)

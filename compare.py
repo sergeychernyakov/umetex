@@ -6,10 +6,14 @@ import fitz  # PyMuPDF
 from openai import OpenAI
 from django.conf import settings
 import django
-from typing import Tuple, Optional, List
+from typing import Tuple, Optional, List, Dict
 import logging
 import json
 import random
+import math
+from fontTools.ttLib import TTFont
+from django.db.models import Q
+from backend.models.document import LANGUAGES, TEXT_ENCODING_CYRILLIC
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +24,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "umetex_config.settings")
 django.setup()
 
 class PDFTranslator:
+    cyrillic_support_cache: Dict[str, bool] = {}
+      
     def __init__(self, document, temperature=0, max_tokens=4096):
         """
         Initialize the PDFTranslator with a Document instance.
@@ -45,6 +51,9 @@ class PDFTranslator:
         :param texts: List of text messages to translate.
         :return: List of extracted translation data.
         """
+        # Regular expression to detect non-translatable segments (document numbers, section numbers)
+        non_translatable_pattern = re.compile(r"^\s*[\d\-\/.:]+[\d\w\-\/.:]*\s*$")
+
         # Filter out non-translatable segments but keep their positions
         translatable_texts = []
         indices_mapping = []  # To map filtered texts back to their original position
@@ -52,7 +61,7 @@ class PDFTranslator:
 
         for i, text in enumerate(texts):
             # Check if text is translatable (not just numbers or document codes)
-            if re.match(r"^\s*\d+[-\w]*\s*$", text):
+            if non_translatable_pattern.match(text):
                 # If it's not translatable, add it directly to the results
                 all_texts[i] = text
                 logger.debug(f"Keeping non-translatable text segment as is: text_{i}: [{text}]")
@@ -99,7 +108,7 @@ class PDFTranslator:
             if non_empty_matches:
                 all_texts[index] = non_empty_matches[0]
             else:
-                logger.warning(f"No match found for text_{index}, keeping original text: {texts[index]}")
+                print(f"No match found for text_{index}, keeping original text: {texts[index]}")
                 all_texts[index] = texts[index]  # Fallback to original if translation is missing
 
         return all_texts
@@ -133,17 +142,6 @@ class PDFTranslator:
 
         return translated_text
 
-    def clean_font_name(self, fontname: str) -> str:
-        """
-        Clean up font name to ensure it is valid for use in PyMuPDF's insert_font method.
-
-        :param fontname: Original font name from the PDF.
-        :return: Cleaned font name suitable for PyMuPDF.
-        """
-        # Replace spaces and special characters with underscores
-        cleaned_fontname = re.sub(r'[^A-Za-z0-9]', '_', fontname)
-        return cleaned_fontname
-
     def translate_pdf(self) -> str:
         """
         Recreate the PDF by copying each page from the original PDF into a new PDF
@@ -154,9 +152,9 @@ class PDFTranslator:
         original_pdf = fitz.open(self.original_pdf_path)
         translated_pdf = fitz.open()
         total_pages = len(original_pdf)
-        self.update_progress(1, total_pages)  # don't remove that
+        self.update_progress(1, total_pages) # don't remove that
 
-        for page_number in range(1):
+        for page_number in range(total_pages):
             logger.debug(f"Processing page {page_number + 1} of {total_pages}")
 
             original_page = original_pdf[page_number]
@@ -186,19 +184,18 @@ class PDFTranslator:
                         for span in line['spans']:
                             original_text = span["text"].strip()
                             bbox = fitz.Rect(span["bbox"])
-                            font_size = round(span.get("size", 12)) - 2
+                            font_size = round(span.get("size", 12))-2
                             color = self.normalize_color(span.get("color", 0))
                             origin = span.get("origin", (0, 0))
                             ascender = span.get("ascender", 0)
                             descender = span.get("descender", 0)
-
+                            
                             # Determine the rotation angle based on the direction
                             dir_x, dir_y = line.get('dir', (1.0, 0.0))
                             rotate_angle = self.calculate_rotation_angle(dir_x, dir_y)
 
                             # Get font name and path
-                            fontname = span.get("font", "Arial")
-                            cleaned_fontname = self.clean_font_name(fontname)  # Clean the font name
+                            fontname = self.clean_font_name(span.get("font", "Arial"))
                             font_path = self.find_font_path(fontname)
 
                             # Check if the font file exists
@@ -207,13 +204,13 @@ class PDFTranslator:
                                 fontname = 'Arial'
                                 font_path = os.path.join(self.fonts_dir, 'Arial.ttf')
 
-                            # Register the font dynamically using cleaned font name
-                            new_page.insert_font(fontname=cleaned_fontname, fontfile=font_path)
+                            # Register the font dynamically
+                            new_page.insert_font(fontname=fontname, fontfile=font_path)
 
                             if re.search(r'[A-Za-z0-9]', original_text):
                                 translated_text = translated_texts[text_index] if text_index < len(translated_texts) else original_text
                                 text_index += 1
-
+                                
                                 fmt = "{:g} {:g} {:g} rg /{f:s} {s:g} Tf"
                                 da_str = fmt.format(*color, f='helv', s=font_size)
                                 logger.debug(f"Adding redaction annotation on page {page_number + 1}")
@@ -230,7 +227,7 @@ class PDFTranslator:
                                     point=adjusted_origin,
                                     text=translated_text,
                                     fontsize=font_size,
-                                    fontname=cleaned_fontname,
+                                    fontname=fontname,
                                     fontfile=font_path,
                                     color=color,
                                     rotate=rotate_angle,
@@ -255,44 +252,110 @@ class PDFTranslator:
         logger.debug(f"Recreated file saved at: {self.translated_file_path}")
         return self.translated_file_path
 
+    def clean_font_name(self, fontname: str) -> str:
+        """
+        Clean up font name to ensure it is valid for use in PyMuPDF's insert_font method.
+
+        :param fontname: Original font name from the PDF.
+        :return: Cleaned font name suitable for PyMuPDF.
+        """
+        # Replace spaces and special characters with underscores
+        cleaned_fontname = re.sub(r'[^A-Za-z0-9]', '_', fontname)
+        return cleaned_fontname
+
+    def calculate_rotation_angle(self, dir_x: float, dir_y: float) -> int:
+        """
+        Calculate the rotation angle based on the text direction.
+
+        :param dir_x: X direction component.
+        :param dir_y: Y direction component.
+        :return: Rotation angle in degrees.
+        """
+        # Calculate the angle in radians and then convert to degrees
+        rotate_angle = math.degrees(math.atan2(dir_y, dir_x))
+
+        # Normalize the angle to a positive value between 0 and 360 degrees
+        if rotate_angle < 0:
+            rotate_angle += 360
+
+        # Round the angle to the nearest integer
+        rotate_angle = round(rotate_angle)
+
+        # Special cases for exact directions
+        if (dir_x, dir_y) == (0.0, 1.0):
+            rotate_angle = 270
+        elif (dir_x, dir_y) == (0.0, -1.0):
+            rotate_angle = 90
+        elif (dir_x, dir_y) == (-1.0, 0.0):
+            rotate_angle = 180
+        elif (dir_x, dir_y) == (1.0, 0.0):
+            rotate_angle = 0
+
+        # Log the calculated angle for debugging purposes
+        return rotate_angle
 
     def find_font_path(self, fontname: str) -> str:
         """
         Find the appropriate font file based on the provided font name by searching through available font files.
-
+        
         :param fontname: The name of the font to find.
         :return: Path to the font file if found, else default to Arial.
         """
-        # Normalize the font name by removing common suffixes and extra spaces
+        logger.debug(f"Searching for font: {fontname}")
+
+        # Normalize the font name by removing common suffixes, spaces, and converting to lowercase
         normalized_fontname = re.sub(r'(MT|PSMT|[-\s]+)', '', fontname).lower()
 
         best_match = None
         best_match_score = 0
+        style_penalty = {
+            "bold": 2,
+            "italic": 2,
+            "bolditalic": 3
+        }
+        match_threshold = 1  # Minimum score to consider a font a good match
+
+        # Получаем список всех языков, поддерживающих кириллицу
+        cyrillic_languages = [lang[0] for lang in LANGUAGES if lang[2] == TEXT_ENCODING_CYRILLIC]
 
         for root, _, files in os.walk(self.fonts_dir):
             for file in files:
                 # Normalize the filename similarly to match against fontname
-                normalized_filename = re.sub(r'[-\s]+', '', file).lower()
-                
-                # Check for exact matches first
-                if normalized_fontname == normalized_filename.replace('.ttf', ''):
-                    best_match = os.path.join(root, file)
-                    break
-                
-                # Check for partial matches as fallback
-                match_score = len(set(normalized_fontname) & set(normalized_filename))
+                normalized_filename = re.sub(r'[-\s]+', '', file).lower().replace('.ttf', '').replace('.ttc', '').replace('.otf', '')
+
+                # Calculate match score based on name similarity
+                match_score = sum(part in normalized_filename for part in normalized_fontname.split('_'))
+
+                # Add penalties if the styles (bold/italic) do not match
+                if "bold" in normalized_fontname and "bold" not in normalized_filename:
+                    match_score -= style_penalty["bold"]
+                if "italic" in normalized_fontname and "italic" not in normalized_filename:
+                    match_score -= style_penalty["italic"]
+                if "bold" not in normalized_fontname and "bold" in normalized_filename:
+                    match_score -= style_penalty["bold"]
+                if "italic" not in normalized_fontname and "italic" in normalized_filename:
+                    match_score -= style_penalty["italic"]
+
+                # Update best match if this file has a better score
                 if match_score > best_match_score:
                     best_match = os.path.join(root, file)
                     best_match_score = match_score
 
-            if best_match:
-                break
+            if best_match and best_match_score >= match_threshold:
+                # Check for the cyrillic support
+                if self.document.translation_language in cyrillic_languages and not self.supports_cyrillic(best_match):
+                    logger.debug(f"Font '{fontname}' does not support Cyrillic. Using Arial as default.")
+                    return os.path.join(self.fonts_dir, 'Arial.ttf')
+                else:
+                    logger.debug(f"Best match found: {os.path.basename(best_match)} with score: {best_match_score}")
+                    break
 
-        if best_match:
-            return best_match
-        else:
-            logger.warning(f"Font '{fontname}' not found. Using Arial as default.")
+        # Use Arial if no match is found or if the best match score is below the threshold
+        if not best_match or best_match_score < match_threshold:
+            logger.error(f"Font '{fontname}' not found or match is too weak. Using Arial as default.")
             return os.path.join(self.fonts_dir, 'Arial.ttf')
+
+        return best_match
 
     def update_progress(self, current_page: int, total_pages: int):
         """
@@ -324,27 +387,52 @@ class PDFTranslator:
             return tuple(c / 255.0 for c in color)
         return (0, 0, 0)  # Default to black if color is invalid
 
+    @staticmethod
+    def supports_cyrillic(font_path: str) -> bool:
+        """
+        Проверяет, поддерживает ли шрифт кириллицу с использованием кэширования.
+
+        :param font_path: Путь к файлу шрифта.
+        :return: True, если шрифт поддерживает кириллицу, иначе False.
+        """
+        # Check if the result is already cached
+        if font_path in PDFTranslator.cyrillic_support_cache:
+            return PDFTranslator.cyrillic_support_cache[font_path]
+
+        try:
+            font = TTFont(font_path)
+            # Кириллический диапазон Unicode: U+0400 to U+04FF
+            cyrillic_range = range(0x0400, 0x0500)
+
+            # Получаем список всех глифов (символов) в шрифте
+            for table in font['cmap'].tables:
+                if any(ord_char in cyrillic_range for ord_char in table.cmap.keys()):
+                    # Cache the result
+                    PDFTranslator.cyrillic_support_cache[font_path] = True
+                    return True
+        except Exception as e:
+            logger.error(f"Ошибка при проверке шрифта {font_path}: {e}")
+
+        # Cache the negative result
+        PDFTranslator.cyrillic_support_cache[font_path] = False
+        return False
+
     def __str__(self):
         return self.title
 
 # Example usage
 # python3 -m backend.services
 if __name__ == "__main__":
-    from backend.models import Document
+    
+    # python manage.py shell
+    
+from backend.models import Document
+from backend.services import PDFTranslator
 
-    # Assume we have a Document instance
-    document = Document.objects.get(pk=191)
+# Получите экземпляр документа
+document = Document.objects.get(pk=191) # 201
 
-    print(document.translation_language)
-
-    document.translate()
-    print(f'self.translated_file : {document.translated_file}')
-
-    # pdf_translator = PDFTranslator(document=document)
-    # messages = [
-    #     "Purpose",
-    #     "The purpose of this document is to establish the Material Handling process and procedure for parts and finished medical devices thereby fulfilling the regulatory requirements as referenced in the Cynosure Quality Manual 931-QA01-001, as applicable.",
-    #     "931-QA01-001 Cynosure Quality Manual"
-    # ]
-    # extracted_data = pdf_translator.translate_texts(messages)
-    # print(f'Extracted dataL {extracted_data}')
+# Создайте экземпляр PDFTranslator и запустите перевод
+translator = PDFTranslator(document)
+translator.translate_pdf()
+print(f'self.translated_file : {document.translated_file}')

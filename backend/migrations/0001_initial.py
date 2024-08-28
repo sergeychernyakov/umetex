@@ -16,7 +16,7 @@ class Migration(migrations.Migration):
                 ('title', models.CharField(max_length=255)),
                 ('original_file', models.FileField(upload_to='%Y/%m/%d/originals/')),
                 ('translated_file', models.FileField(blank=True, null=True, upload_to='%Y/%m/%d/translations/')),
-                ('translation_language', models.CharField(choices=Document.LANGUAGES, max_length=2)),
+                ('translation_language', models.CharField(choices=Document.LANGUAGES_CHOICES, max_length=2)),
                 ('uploaded_at', models.DateTimeField(auto_now_add=True)),
             ],
         ),

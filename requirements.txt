@@ -8,6 +8,7 @@ django-extensions==3.2.3
 djangorestframework==3.14.0
 dnspython==2.6.1
 Faker==27.0.0
+fonttools==4.53.1
 fpdf==1.7.2
 h11==0.14.0
 httpcore==1.0.5

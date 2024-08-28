@@ -32,7 +32,7 @@ def index(request):
         {
             'page_obj': page_obj,
             'supported_formats': settings.SUPPORTED_FILE_FORMATS,
-            'languages': Document.LANGUAGES
+            'languages': Document.LANGUAGES_CHOICES
         }
     )
 

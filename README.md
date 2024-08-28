@@ -18,6 +18,38 @@ tested on mac on safari and chrome
 
 
 
+## Setup
+To set up the app locally, follow these steps:
+
+1. Clone the repository to your local machine.
+  git clone https://github.com/sergeychernyakov/umetex.git
+2. Create a virtual environment:
+    ```sh
+    python3 -m venv venv
+    ```
+3. Activate the virtual environment:
+    ```sh
+    source venv/bin/activate
+    ```
+4. Install the required dependencies:
+    ```sh
+    pip install -r requirements.txt
+    ```
+5. Set environment variables:
+   ```sh
+    cp .env.example .env
+    ```
+    set configs
+6. Export the Installed Packages:
+   ```sh
+    pip freeze > requirements.txt
+    ```
+7. Run app
+    ```sh
+    python manage.py runserver
+    ```
+
+
 Plan:
  - перевод файла .pdf в фоновом режиме
    + remove white background
@@ -33,9 +65,13 @@ Plan:
    + поправить ротацию текста
    + поправить формат
 
-
    - проверить шрифты на IJAAS-SCOPUS.pdf
-   - hande javascript errors 
+
+
+   - ограничить размер, тип файлов
+   - hande javascript errors
+
+
 
  - перевод картинок
  - перевод файла .docx
@@ -45,6 +81,8 @@ Plan:
  - tests
 
 - cleanup requirements.txt
+
+
 
 
 
