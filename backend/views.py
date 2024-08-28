@@ -94,19 +94,9 @@ def check_translation_progress(request, document_id):
     :return: JsonResponse with progress data or an error message.
     """
     progress_file = os.path.join(settings.MEDIA_ROOT, f'{document_id}', f'{document_id}_progress.json')
-
-    # Check if the progress file exists
     if os.path.exists(progress_file):
-        try:
-            with open(progress_file, 'r') as f:
-                progress_data = json.load(f)
-            return JsonResponse(progress_data)
-        except json.JSONDecodeError:
-            # Handle JSON decoding errors (empty or malformed file)
-            return JsonResponse({"error": "Ошибка при чтении данных прогресса. Файл поврежден."}, status=500)
-        except Exception as e:
-            # General exception handling for unexpected errors
-            return JsonResponse({"error": f"Произошла ошибка: {str(e)}"}, status=500)
+        with open(progress_file, 'r') as f:
+            progress_data = json.load(f)
+        return JsonResponse(progress_data)
     else:
-        # Return error if the file does not exist
         return JsonResponse({"error": "Прогресс недоступен"}, status=404)
