@@ -36,7 +36,7 @@ class ImageTranslator:
         os.makedirs(self.translations_dir, exist_ok=True)
         self.translated_image_path = os.path.join(self.translations_dir, self.translated_image_name)
         self.translator = TextTranslator(self.document.translation_language)
-        self.font_path = os.path.join(settings.BASE_DIR, 'fonts', 'arial.ttf')  # Adjust font path as necessary
+        self.font_path = os.path.join(settings.BASE_DIR, 'fonts', 'Arial Bold.ttf')  # Adjust font path as necessary
 
         logger.info(f"Initialized ImageTranslator for document ID: {document.pk}")
 
@@ -96,6 +96,12 @@ class ImageTranslator:
                 text_bbox = draw.textbbox((0, 0), translated_text, font=font)
                 text_width = text_bbox[2] - text_bbox[0]
 
+            # Check if further fine adjustment is needed
+            while text_width < width and font_size < 100:
+                font_size += 1
+                font = ImageFont.truetype(self.font_path, font_size)
+                text_bbox = draw.textbbox((0, 0), translated_text, font=font)
+                text_width = text_bbox[2] - text_bbox[0]
             # Draw the translated text on top of the white background
             draw.text((x, y), translated_text, font=font, fill="black")
             logger.debug(f"Applied translated text: '{translated_text}' at position ({x}, {y}) with font size {font_size}")
@@ -114,6 +120,7 @@ class ImageTranslator:
         return self.translated_image_path
 
 # Example usage
+# python3 -m backend.services.image_translator
 if __name__ == '__main__':
 
     import django
@@ -135,7 +142,7 @@ if __name__ == '__main__':
 
     from backend.models import Document
 
-    document = Document.objects.get(pk=224)  # Replace with actual document ID
+    document = Document.objects.get(pk=236)  # Replace with actual document ID
     image_translator = ImageTranslator(document)
     translated_image_path = image_translator.translate_image()
     print(f'Translated image saved at: {translated_image_path}')
