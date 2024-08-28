@@ -3,6 +3,7 @@
 import os
 import shutil
 import logging
+import json
 from django.conf import settings
 from django.db import models
 from django.db.models.signals import post_delete
@@ -155,6 +156,23 @@ class Document(models.Model):
 
         translator = PDFTranslator(self)  # Create a PDFTranslator instance with the document
         translator.translate_pdf()  # Translate the document and update the translated_file field
+
+    def update_progress(self, current_page: int, total_pages: int):
+        """
+        Update the progress of the translation.
+
+        :param current_page: Current page number being translated.
+        :param total_pages: Total number of pages in the document.
+        """
+        progress_data = {
+            "document_id": self.pk,
+            "current_page": current_page,
+            "total_pages": total_pages
+        }
+        progress_file = os.path.join(settings.MEDIA_ROOT, f'{self.pk}', f'{self.pk}_progress.json')
+        os.makedirs(os.path.dirname(progress_file), exist_ok=True)
+        with open(progress_file, 'w') as f:
+            json.dump(progress_data, f)
 
 # Signal handler to delete files from the filesystem when a Document instance is deleted
 @receiver(post_delete, sender=Document)

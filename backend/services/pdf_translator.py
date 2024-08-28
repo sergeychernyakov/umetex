@@ -6,9 +6,7 @@ import fitz  # PyMuPDF
 from django.conf import settings
 from typing import Tuple, Optional, List, Dict
 import logging
-import json
 import math
-# from django.db.models import Q
 from backend.models import Document
 from backend.services.text_translator import TextTranslator
 from backend.services.font_manager import FontManager
@@ -41,7 +39,7 @@ class PDFTranslator:
         original_pdf = fitz.open(self.original_pdf_path)
         translated_pdf = fitz.open()
         total_pages = len(original_pdf)
-        self.update_progress(1, total_pages) # don't remove that
+        self.document.update_progress(1, total_pages) # don't remove that
 
         for page_number in range(total_pages):
             logger.debug(f"Processing page {page_number + 1} of {total_pages}")
@@ -126,7 +124,7 @@ class PDFTranslator:
                                     logger.error(f"Failed to insert text at {bbox.tl} on page {page_number + 1}")
 
             # Update progress after translating each page
-            self.update_progress(page_number + 1, total_pages)
+            self.document.update_progress(page_number + 1, total_pages)
 
         # Save the translated PDF
         logger.debug(f"Saving translated PDF to {self.translated_file_path}")
@@ -171,22 +169,6 @@ class PDFTranslator:
 
         # Log the calculated angle for debugging purposes
         return rotate_angle
-
-    def update_progress(self, current_page: int, total_pages: int):
-        """
-        Update the progress of the translation.
-        
-        :param current_page: Current page number being translated.
-        :param total_pages: Total number of pages in the document.
-        """
-        progress_data = {
-            "document_id": self.document.pk,
-            "current_page": current_page,
-            "total_pages": total_pages
-        }
-        progress_file = os.path.join(settings.MEDIA_ROOT, f'{self.document.pk}', f'{self.document.pk}_progress.json')
-        with open(progress_file, 'w') as f:
-            json.dump(progress_data, f)
 
     @staticmethod
     def normalize_color(color: Optional[int]) -> Tuple[float, float, float]:
