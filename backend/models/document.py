@@ -8,13 +8,14 @@ from django.db import models
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 
-
 logger = logging.getLogger(__name__)
 
+# Constants for text encoding types
 TEXT_ENCODING_LATIN = 0
 TEXT_ENCODING_GREEK = 1
 TEXT_ENCODING_CYRILLIC = 2
 
+# List of supported languages with their text encoding
 LANGUAGES = [
     ('RU', 'Русский', TEXT_ENCODING_CYRILLIC),
     ('EN', 'Английский', TEXT_ENCODING_LATIN),
@@ -82,19 +83,30 @@ LANGUAGES = [
 ]
 
 class Document(models.Model):
-    # Копия списка LANGUAGES для использования в поле translation_language (только 2 элемента в каждом кортеже)
+    """
+    Model to represent a document for translation. Stores original and translated files, along with language details.
+    """
+    # Choices for language selection, derived from LANGUAGES constant
     LANGUAGES_CHOICES = [(lang[0], lang[1]) for lang in LANGUAGES]
 
-    title = models.CharField(max_length=255)
-    original_file = models.FileField(upload_to='tmp/originals/')
-    translated_file = models.FileField(upload_to='tmp/translations/', blank=True, null=True)
-    translation_language = models.CharField(max_length=5, choices=LANGUAGES_CHOICES)
-    uploaded_at = models.DateTimeField(auto_now_add=True)
+    title = models.CharField(max_length=255)  # Title of the document
+    original_file = models.FileField(upload_to='tmp/originals/')  # Path to the original file
+    translated_file = models.FileField(upload_to='tmp/translations/', blank=True, null=True)  # Path to the translated file
+    translation_language = models.CharField(max_length=5, choices=LANGUAGES_CHOICES)  # Language to translate into
+    uploaded_at = models.DateTimeField(auto_now_add=True)  # Timestamp of when the document was uploaded
 
     def save(self, *args, **kwargs):
-        if not self.pk:
-            super().save(*args, **kwargs)  # Save to generate a primary key
+        """
+        Override the save method to handle file storage and renaming for both original and translated files.
 
+        :param args: Positional arguments passed to the superclass save method.
+        :param kwargs: Keyword arguments passed to the superclass save method.
+        """
+        # Ensure the instance has a primary key (ID) before processing
+        if not self.pk:
+            super().save(*args, **kwargs)  # Call the parent class's save to generate a primary key
+
+        # Define new paths for original and translated files
         original_file_new_name = f'original_{self.pk}.pdf'
         original_file_new_path = f'{self.pk}/originals/{original_file_new_name}'
         translated_file_new_path = f'{self.pk}/translations/{os.path.basename(self.translated_file.name)}' if self.translated_file else None
@@ -102,12 +114,14 @@ class Document(models.Model):
         print(f"Original file new path: {original_file_new_path}")
         print(f"Translated file new path: {translated_file_new_path}")
 
+        # Create directories for original and translated files if they don't exist
         original_dir = os.path.join(settings.MEDIA_ROOT, f'{self.pk}/originals/')
         translated_dir = os.path.join(settings.MEDIA_ROOT, f'{self.pk}/translations/')
 
         os.makedirs(original_dir, exist_ok=True)
         os.makedirs(translated_dir, exist_ok=True)
 
+        # Move original file from temporary location to permanent location
         if self.original_file and self.original_file.name.startswith('tmp/originals/'):
             try:
                 original_source_path = self.original_file.path
@@ -118,6 +132,7 @@ class Document(models.Model):
             except Exception as e:
                 logger.debug(f"Error moving original file: {e}")
 
+        # Move translated file from temporary location to permanent location
         if self.translated_file and self.translated_file.name.startswith('tmp/translations/'):
             try:
                 translated_source_path = self.translated_file.path
@@ -128,39 +143,31 @@ class Document(models.Model):
             except Exception as e:
                 logger.debug(f"Error moving translated file: {e}")
 
+        # Call the parent class's save method to save the instance
         super().save(*args, **kwargs)
 
     def translate(self):
         """
-        Translate the document using the PDFTranslator class and update the translated_file field.
+        Perform translation on the document using the PDFTranslator class.
+        This method initializes the PDFTranslator with the current document and
+        calls the translate_pdf method to create the translated file.
         """
-        from backend.services import PDFTranslator
+        from backend.services.pdf_translator import PDFTranslator  # Import PDFTranslator class
 
-        translator = PDFTranslator(self)
-        translator.translate_pdf()  # Perform the translation and get the file name
+        translator = PDFTranslator(self)  # Create a PDFTranslator instance with the document
+        translator.translate_pdf()  # Translate the document and update the translated_file field
 
-    # def translate(self):
-    #     from fpdf import FPDF
-
-    #     document_dir = os.path.join(settings.MEDIA_ROOT, str(self.pk))
-    #     translations_dir = os.path.join(document_dir, 'translations')
-    #     os.makedirs(translations_dir, exist_ok=True)
-
-    #     translated_file_name = f"translated_{self.pk}.pdf"
-    #     translated_file_path = os.path.join(translations_dir, translated_file_name)
-
-    #     pdf = FPDF()
-    #     pdf.add_page()
-    #     pdf.set_font("Arial", size=12)
-    #     pdf.cell(200, 10, txt=f"Translated: {self.title}", ln=True, align='C')
-    #     pdf.output(translated_file_path)
-
-    #     self.translated_file.name = f'{self.pk}/translations/{translated_file_name}'
-    #     self.save()
-
+# Signal handler to delete files from the filesystem when a Document instance is deleted
 @receiver(post_delete, sender=Document)
 def delete_files_on_document_delete(sender, instance, **kwargs):
+    """
+    Delete associated files from the filesystem when a Document instance is deleted.
+
+    :param sender: The model class that sent the signal.
+    :param instance: The instance of the model that was deleted.
+    :param kwargs: Additional keyword arguments.
+    """
     if instance.original_file:
-        instance.original_file.delete(save=False)
+        instance.original_file.delete(save=False)  # Delete the original file
     if instance.translated_file:
-        instance.translated_file.delete(save=False)
+        instance.translated_file.delete(save=False)  # Delete the translated file

@@ -1,53 +1,83 @@
-# umetex
+# README.md
 
-На бирже размещен проект "Создать GPT-переводчик на сайте"
-Сверстван сайт: https://funny-madeleine-57acd2.netlify.app/
-1. Нужно сделать, чтобы пользователь мог загружать в него pdf и word документы.
-2. Далее сделать перевод документа с помощью ChatGPT (Важно! Нужно сохранять форматирование документа, в том числе таблицы. Документ визуально не должен отличаться от оригинала)
-3. Сделать перевод фото. Текст на картинках в документе также должен заменяться на язык перевода.
-4. Добавить админ-панель, в которой можно будет следить за количеством генераций за все время, задавать термины, которые переводятся одинаково и менять модель ChatGPT.
+# Umetex
 
-Технолигии:
+Umetex is a web-based application designed for translating medical documents. It utilizes the power of OpenAI's ChatGPT for translating documents while maintaining the original formatting, including tables and images. Users can upload PDF and Word documents or images, and Umetex translates the content into the selected language. The platform also includes an admin panel to monitor usage statistics, set translation terms, and manage the translation model.
 
-Python
-Django
-React
-MongoDB
+## Features
 
-tested on mac on safari and chrome
+1. **Document Upload**: Users can upload PDF, Word, and image files (e.g., .jpg, .jpeg, .png) for translation.
+2. **AI-Powered Translation**: Uses OpenAI's ChatGPT to translate the content while preserving the document's original layout and formatting, including tables and images.
+3. **Cyrillic Support**: Automatically selects fonts that support Cyrillic characters for translations into languages that use the Cyrillic alphabet.
+4. **History and Progress Tracking**: Users can view the history of translated documents and check the translation progress in real-time.
+5. **Admin Panel**: Admins can track the number of translations performed, manage translation terminology, and switch the translation model.
+6. **Asynchronous Translation**: Translations are performed asynchronously, allowing users to continue using the app while documents are being processed.
 
+## Technologies Used
 
+- **Backend**: Python, Django
+- **Database**: MongoDB
+- **AI**: OpenAI's ChatGPT
+- **PDF Manipulation**: PyMuPDF (Fitz)
+- **Font Handling**: FontTools
+- **Environment Management**: dotenv
 
 ## Setup
+
 To set up the app locally, follow these steps:
 
-1. Clone the repository to your local machine.
-  git clone https://github.com/sergeychernyakov/umetex.git
-2. Create a virtual environment:
-    ```sh
+1. **Clone the repository**:
+    ```bash
+    git clone https://github.com/sergeychernyakov/umetex.git
+    ```
+2. **Create a virtual environment**:
+    ```bash
     python3 -m venv venv
     ```
-3. Activate the virtual environment:
-    ```sh
+3. **Activate the virtual environment**:
+    ```bash
     source venv/bin/activate
     ```
-4. Install the required dependencies:
-    ```sh
+4. **Install the required dependencies**:
+    ```bash
     pip install -r requirements.txt
     ```
-5. Set environment variables:
-   ```sh
+5. **Set environment variables**:
+    ```bash
     cp .env.example .env
     ```
-    set configs
-6. Export the Installed Packages:
-   ```sh
-    pip freeze > requirements.txt
-    ```
-7. Run app
-    ```sh
+   Configure the `.env` file with the necessary settings, including `OPENAI_API_KEY`.
+
+6. **Run the Django server**:
+    ```bash
     python manage.py runserver
     ```
+
+## Usage
+
+1. **Upload Document**: Visit the main page of the app. Drag and drop a document or use the file picker to upload.
+2. **Select Language**: Choose the target translation language from the dropdown menu.
+3. **View History**: Check the history of your translations and download translated documents.
+4. **Admin Panel**: Access the admin panel to manage translation settings and view usage statistics.
+
+## Admin Panel
+
+- Accessible only to users with admin privileges.
+- Provides a dashboard for monitoring translation statistics.
+- Allows the setting of specific translation terms for consistency across documents.
+- Offers options to change the underlying translation model.
+
+## Testing
+
+The application has been tested on:
+- **Operating Systems**: macOS
+- **Browsers**: Safari, Chrome
+
+## Contribution
+
+Feel free to contribute to the project by opening a pull request or submitting an issue on GitHub. Ensure to follow the project's coding standards and include tests for any new functionality.
+
+
 
 
 Plan:
@@ -60,29 +90,22 @@ Plan:
    + попробовать перевод кириллицы
    + исправить знаки вопроса
    + использовать bold и т.д.
-
    + проверить что шрифт найден корректно
    + поправить ротацию текста
    + поправить формат
+   + проверить шрифты на IJAAS-SCOPUS.pdf
+  + ограничить размер, тип файлов
+  + hande javascript errors
 
-   - проверить шрифты на IJAAS-SCOPUS.pdf
+   - перевод картинок
 
-
-   - ограничить размер, тип файлов
-   - hande javascript errors
-
-
-
- - перевод картинок
- - перевод файла .docx
-
+  - добавить админку
 
  - README
  - tests
 
 - cleanup requirements.txt
 
-
-
-
-
+тестировать в разных браузерах, разрешениях
+тестировать на телефоне
+- почему pdf файлы такеи большие получаются?

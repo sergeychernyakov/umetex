@@ -133,6 +133,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 SUPPORTED_FILE_FORMATS = ['.pdf', '.jpg', '.jpeg', '.png']
 
+MAX_FILE_SIZE_MB = 5
+
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
 

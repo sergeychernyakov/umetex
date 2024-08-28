@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const downloadLink = document.getElementById('downloadLink');
     const translatedPages = document.getElementById('translatedPages');
     const progressBar = document.getElementById('progressBar');
+    const errorMessage = document.getElementById('errorMessage');
 
     let translationInterval;
 
@@ -78,6 +79,9 @@ document.addEventListener('DOMContentLoaded', function() {
         // Update the file name in the UI
         uploadedFileName.textContent = file.name;
 
+        // Hide error message
+        errorMessage.style.display = 'none';
+
         // Hide the file upload block and show the file uploaded block
         toggleVisibility(fileUploadedBlock);
     }
@@ -102,10 +106,18 @@ document.addEventListener('DOMContentLoaded', function() {
             if (data.success) {
                 startRealTranslationProgress(data);
             } else {
-                alert('Failed to start translation');
+                // Display the error message
+                errorMessage.textContent = data.error;
+                errorMessage.style.display = 'block';
+                toggleVisibility(fileUploadBlock);
             }
         })
-        .catch(error => console.error('Error:', error));
+        .catch(error => {
+            console.error('Error:', error);
+            errorMessage.textContent = 'Произошла неожиданная ошибка: ' + error;
+            errorMessage.style.display = 'block';
+            toggleVisibility(fileUploadBlock);
+        });
     }
 
     function startRealTranslationProgress(data) {
@@ -135,6 +147,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .catch(error => {
                     console.error('Error fetching progress:', error);
+                    errorMessage.textContent = 'Произошла ошибка при проверке прогресса: ' + error;
+                    errorMessage.style.display = 'block';
                     clearInterval(translationInterval);
                 });
         }, 1000); // Check every second
@@ -169,4 +183,33 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Initialize with the upload block visible
     toggleVisibility(fileUploadBlock);
+
+    // Validate file size and type using settings from the template
+    window.validateFile = function() {
+        const file = fileInput.files[0];
+        if (file) {
+            const fileSizeMB = file.size / (1024 * 1024); // Convert bytes to MB
+            const fileExtension = file.name.split('.').pop().toLowerCase();
+
+            // Check file size using the MAX_FILE_SIZE_MB passed from the template
+            if (fileSizeMB > MAX_FILE_SIZE_MB) {
+                errorMessage.textContent = `Размер файла превышает максимальный допустимый размер в ${MAX_FILE_SIZE_MB} MB.`;
+                errorMessage.style.display = 'block';
+                fileInput.value = ''; // Clear the input
+                return;
+            }
+
+            // Check file extension against SUPPORTED_FILE_FORMATS
+            if (!SUPPORTED_FILE_FORMATS.includes(`.${fileExtension}`)) {
+                errorMessage.textContent = `Недопустимый формат файла. Пожалуйста, загрузите файл с одним из следующих расширений: ${SUPPORTED_FILE_FORMATS.join(', ')}`;
+                errorMessage.style.display = 'block';
+                fileInput.value = ''; // Clear the input
+                return;
+            }
+
+            // Hide error message if validation passes
+            errorMessage.style.display = 'none';
+            handleFileSelect(file);
+        }
+    };
 });

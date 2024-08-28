@@ -32,7 +32,9 @@ def index(request):
         {
             'page_obj': page_obj,
             'supported_formats': settings.SUPPORTED_FILE_FORMATS,
-            'languages': Document.LANGUAGES_CHOICES
+            'languages': Document.LANGUAGES_CHOICES,
+            'accept_types': ','.join(settings.SUPPORTED_FILE_FORMATS),
+            'max_file_size_mb': settings.MAX_FILE_SIZE_MB
         }
     )
 
@@ -46,6 +48,25 @@ def async_translate(document):
 def upload_document(request):
     if request.method == 'POST' and request.FILES.get('document'):
         document = request.FILES['document']
+        file_extension = os.path.splitext(document.name)[1].lower()
+        file_size_mb = document.size / (1024 * 1024)  # Convert bytes to MB
+
+        # Validate file format
+        if file_extension not in settings.SUPPORTED_FILE_FORMATS:
+            return JsonResponse({
+                'success': False,
+                'error': 'Недопустимый формат файла. Пожалуйста, загрузите файл с одним из следующих расширений: ' +
+                        ', '.join(settings.SUPPORTED_FILE_FORMATS)
+            })
+
+        # Validate file size
+        if file_size_mb > settings.MAX_FILE_SIZE_MB:
+            return JsonResponse({
+                'success': False,
+                'error': f'Размер файла превышает максимальный допустимый размер в {settings.MAX_FILE_SIZE_MB} MB.'
+            })
+
+        # Save the document and start translation
         new_document = Document(
             title=document.name,
             original_file=document,
@@ -65,10 +86,27 @@ def upload_document(request):
     return JsonResponse({'success': False})
 
 def check_translation_progress(request, document_id):
+    """
+    Check the translation progress of a specific document.
+
+    :param request: The HTTP request object.
+    :param document_id: The ID of the document to check progress for.
+    :return: JsonResponse with progress data or an error message.
+    """
     progress_file = os.path.join(settings.MEDIA_ROOT, f'{document_id}', f'{document_id}_progress.json')
+
+    # Check if the progress file exists
     if os.path.exists(progress_file):
-        with open(progress_file, 'r') as f:
-            progress_data = json.load(f)
-        return JsonResponse(progress_data)
+        try:
+            with open(progress_file, 'r') as f:
+                progress_data = json.load(f)
+            return JsonResponse(progress_data)
+        except json.JSONDecodeError:
+            # Handle JSON decoding errors (empty or malformed file)
+            return JsonResponse({"error": "Ошибка при чтении данных прогресса. Файл поврежден."}, status=500)
+        except Exception as e:
+            # General exception handling for unexpected errors
+            return JsonResponse({"error": f"Произошла ошибка: {str(e)}"}, status=500)
     else:
-        return JsonResponse({"error": "Progress not available"}, status=404)
+        # Return error if the file does not exist
+        return JsonResponse({"error": "Прогресс недоступен"}, status=404)

@@ -16,20 +16,13 @@ Including another URLconf
     1. Import the include() function: from django.urls import include, path
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
-from django.urls import path
+from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from rest_framework.routers import DefaultRouter
-from backend import views
-
-# Set up the router for the API endpoints
-router = DefaultRouter()
-router.register(r'documents', views.DocumentViewSet)
 
 urlpatterns = [
-    path('', views.index, name='index'),  # Assuming index.html is your main page
-    path('upload/', views.upload_document, name='upload_document'),  # URL for uploading documents
-    path('progress/<int:document_id>/', views.check_translation_progress, name='check_translation_progress'),
+    path('', include('backend.urls')),  # Include all backend URLs
+    # You can add other includes for different apps if needed
 ]
 
 if settings.DEBUG:

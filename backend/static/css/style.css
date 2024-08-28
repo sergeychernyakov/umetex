@@ -899,3 +899,21 @@ header .header_block .title_header h1 span {
     visibility: visible;
     max-height: 700px; /* Adjust to a value large enough to cover the largest content */
 }
+
+/* Error message styles */
+.error-message {
+      font-family: Inter, sans-serif; /* Match the site's font */
+      font-size: 18px;                /* Consistent font size */
+      color: #D8000C;               /* Dark red color for text */
+      background-color: #f3dbdb;    /* Light red background for the error */
+      border: 2px solid #D8000C;    /* Border color to match text */
+      border-radius: 15px;            /* Rounded corners for a modern look */
+      padding: 15px 20px;             /* Padding for spacing */
+      margin: 40px 20px 0;            /* Space around the message */
+      text-align: center;             /* Center-align the text */
+      max-width: 880px;               /* Consistent width with other elements */
+      margin-left: auto;              /* Center the error message */
+      margin-right: auto;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+      display: block;                 /* Ensure the message is displayed */
+}
