@@ -4,6 +4,7 @@ import os
 import shutil
 import logging
 import json
+import django
 from django.conf import settings
 from django.db import models
 from django.db.models.signals import post_delete
@@ -107,8 +108,13 @@ class Document(models.Model):
         if not self.pk:
             super().save(*args, **kwargs)  # Call the parent class's save to generate a primary key
 
+        # Validate the file extension
+        if self.file_extension not in settings.SUPPORTED_FILE_FORMATS:
+            logger.error(f"Unsupported file type: {self.file_extension}")
+            raise ValueError(f"Unsupported file type: {self.file_extension}")
+
         # Define new paths for original and translated files
-        original_file_new_name = f'original_{self.pk}.pdf'
+        original_file_new_name = f'original_{self.pk}{self.file_extension}'
         original_file_new_path = f'{self.pk}/originals/{original_file_new_name}'
         translated_file_new_path = f'{self.pk}/translations/{os.path.basename(self.translated_file.name)}' if self.translated_file else None
 
@@ -148,14 +154,33 @@ class Document(models.Model):
 
     def translate(self):
         """
-        Perform translation on the document using the PDFTranslator class.
-        This method initializes the PDFTranslator with the current document and
-        calls the translate_pdf method to create the translated file.
+        Perform translation on the document using either the PDFTranslator or ImageTranslator class,
+        depending on the type of the original file.
         """
-        from backend.services.pdf_translator import PDFTranslator  # Import PDFTranslator class
+        if self.file_extension == '.pdf':
+            from backend.services.pdf_translator import PDFTranslator
 
-        translator = PDFTranslator(self)  # Create a PDFTranslator instance with the document
-        translator.translate_pdf()  # Translate the document and update the translated_file field
+            # Use PDFTranslator for PDF files
+            translator = PDFTranslator(self)
+            translator.translate_pdf()
+        elif self.file_extension in ['.jpg', '.jpeg', '.png']:
+            from backend.services.image_translator import ImageTranslator
+
+            # Use ImageTranslator for image files
+            translator = ImageTranslator(self)
+            translator.translate_image()
+        else:
+            logger.error(f"Unsupported file type for translation: {self.file_extension}")
+            raise ValueError(f"Unsupported file type for translation: {self.file_extension}")
+
+    @property
+    def file_extension(self) -> str:
+        """
+        Get the file extension of the original file.
+        
+        :return: The file extension in lowercase (e.g., '.pdf', '.jpg').
+        """
+        return os.path.splitext(self.original_file.name)[1].lower()
 
     def update_progress(self, current_page: int, total_pages: int):
         """
@@ -167,7 +192,8 @@ class Document(models.Model):
         progress_data = {
             "document_id": self.pk,
             "current_page": current_page,
-            "total_pages": total_pages
+            "total_pages": total_pages,
+            "file_name": f'translated_{self.pk}{self.file_extension}'
         }
         progress_file = os.path.join(settings.MEDIA_ROOT, f'{self.pk}', f'{self.pk}_progress.json')
         os.makedirs(os.path.dirname(progress_file), exist_ok=True)

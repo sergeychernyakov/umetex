@@ -134,6 +134,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     } else {
                         currentPage = data.current_page;
                         totalPages = data.total_pages;
+                        let fileName = data.file_name;
     
                         translatedPages.textContent = `${currentPage}/${totalPages}`;
                         let progressPercentage = 40 + ((currentPage / totalPages) * 60);
@@ -141,7 +142,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
                         if (currentPage >= totalPages) {
                             clearInterval(translationInterval);
-                            showTranslationComplete(`/media/${documentId}/translations/translated_${documentId}.pdf`);
+                            showTranslationComplete(`/media/${documentId}/translations/${fileName}`);
                         }
                     }
                 })

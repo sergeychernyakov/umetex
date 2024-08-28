@@ -124,6 +124,8 @@ document.addEventListener('DOMContentLoaded', function() {
         let currentPage = 0;
         let totalPages = 1;
         let documentId = data.document_id;
+        let fileName = data.file_name || `translated_${documentId}.pdf`;
+
         translationInterval = setInterval(() => {
             fetch(`/progress/${documentId}/`)
                 .then(response => response.json())
@@ -141,7 +143,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
                         if (currentPage >= totalPages) {
                             clearInterval(translationInterval);
-                            showTranslationComplete(`/media/${documentId}/translations/translated_${documentId}.pdf`);
+                            // Construct the file path using the file extension
+                            showTranslationComplete(`/media/${documentId}/translations/${fileName}`);
                         }
                     }
                 })

@@ -123,7 +123,7 @@ class TextTranslator:
         return translated_text
 
 # Example usage
-# python3 -m src.services.text_translator
+# python3 -m backend.services.text_translator
 if __name__ == '__main__':
     # Example setup
     api_key = "your_openai_api_key"

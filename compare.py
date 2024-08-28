@@ -3,18 +3,21 @@
 import os
 import shutil
 import logging
+import json
+import django
 from django.conf import settings
 from django.db import models
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
 
-
 logger = logging.getLogger(__name__)
 
+# Constants for text encoding types
 TEXT_ENCODING_LATIN = 0
 TEXT_ENCODING_GREEK = 1
 TEXT_ENCODING_CYRILLIC = 2
 
+# List of supported languages with their text encoding
 LANGUAGES = [
     ('RU', 'Русский', TEXT_ENCODING_CYRILLIC),
     ('EN', 'Английский', TEXT_ENCODING_LATIN),
@@ -82,32 +85,49 @@ LANGUAGES = [
 ]
 
 class Document(models.Model):
-    # Копия списка LANGUAGES для использования в поле translation_language (только 2 элемента в каждом кортеже)
+    """
+    Model to represent a document for translation. Stores original and translated files, along with language details.
+    """
+    # Choices for language selection, derived from LANGUAGES constant
     LANGUAGES_CHOICES = [(lang[0], lang[1]) for lang in LANGUAGES]
 
-    title = models.CharField(max_length=255)
-    original_file = models.FileField(upload_to='tmp/originals/')
-    translated_file = models.FileField(upload_to='tmp/translations/', blank=True, null=True)
-    translation_language = models.CharField(max_length=5, choices=LANGUAGES_CHOICES)
-    uploaded_at = models.DateTimeField(auto_now_add=True)
+    title = models.CharField(max_length=255)  # Title of the document
+    original_file = models.FileField(upload_to='tmp/originals/')  # Path to the original file
+    translated_file = models.FileField(upload_to='tmp/translations/', blank=True, null=True)  # Path to the translated file
+    translation_language = models.CharField(max_length=5, choices=LANGUAGES_CHOICES)  # Language to translate into
+    uploaded_at = models.DateTimeField(auto_now_add=True)  # Timestamp of when the document was uploaded
 
     def save(self, *args, **kwargs):
-        if not self.pk:
-            super().save(*args, **kwargs)  # Save to generate a primary key
+        """
+        Override the save method to handle file storage and renaming for both original and translated files.
 
-        original_file_new_name = f'original_{self.pk}.pdf'
+        :param args: Positional arguments passed to the superclass save method.
+        :param kwargs: Keyword arguments passed to the superclass save method.
+        """
+        # Ensure the instance has a primary key (ID) before processing
+        if not self.pk:
+            super().save(*args, **kwargs)  # Call the parent class's save to generate a primary key
+
+        # Validate the file extension
+        if self.file_extension not in settings.SUPPORTED_FILE_FORMATS:
+            logger.error(f"Unsupported file type: {self.file_extension}")
+            raise ValueError(f"Unsupported file type: {self.file_extension}")
+
+        # Define new paths for original and translated files
+        original_file_new_name = f'original_{self.pk}{self.file_extension}'
         original_file_new_path = f'{self.pk}/originals/{original_file_new_name}'
         translated_file_new_path = f'{self.pk}/translations/{os.path.basename(self.translated_file.name)}' if self.translated_file else None
 
-        print(f"Original file new path: {original_file_new_path}")
-        print(f"Translated file new path: {translated_file_new_path}")
+        logger.debug(f"Original file new path: {original_file_new_path}")
 
+        # Create directories for original and translated files if they don't exist
         original_dir = os.path.join(settings.MEDIA_ROOT, f'{self.pk}/originals/')
         translated_dir = os.path.join(settings.MEDIA_ROOT, f'{self.pk}/translations/')
 
         os.makedirs(original_dir, exist_ok=True)
         os.makedirs(translated_dir, exist_ok=True)
 
+        # Move original file from temporary location to permanent location
         if self.original_file and self.original_file.name.startswith('tmp/originals/'):
             try:
                 original_source_path = self.original_file.path
@@ -118,6 +138,7 @@ class Document(models.Model):
             except Exception as e:
                 logger.debug(f"Error moving original file: {e}")
 
+        # Move translated file from temporary location to permanent location
         if self.translated_file and self.translated_file.name.startswith('tmp/translations/'):
             try:
                 translated_source_path = self.translated_file.path
@@ -128,20 +149,62 @@ class Document(models.Model):
             except Exception as e:
                 logger.debug(f"Error moving translated file: {e}")
 
+        # Call the parent class's save method to save the instance
         super().save(*args, **kwargs)
 
     def translate(self):
         """
-        Translate the document using the PDFTranslator class and update the translated_file field.
+        Perform translation on the document using either the PDFTranslator or ImageTranslator class,
+        depending on the type of the original file.
         """
-        from backend.services.pdf_translator import PDFTranslator  
+        if self.file_extension == '.pdf':
+            from backend.services.pdf_translator import PDFTranslator
 
-        translator = PDFTranslator(self)
-        translator.translate_pdf()  # Perform the translation and get the file name
+            # Use PDFTranslator for PDF files
+            translator = PDFTranslator(self)
+            translator.translate_pdf()
+        elif self.file_extension in ['.jpg', '.jpeg', '.png']:
+            from backend.services.image_translator import ImageTranslator
 
+            # Use ImageTranslator for image files
+            translator = ImageTranslator(self)
+            translator.translate_image()
+        else:
+            logger.error(f"Unsupported file type for translation: {self.file_extension}")
+            raise ValueError(f"Unsupported file type for translation: {self.file_extension}")
+
+    def file_extension(self):
+        os.path.splitext(self.original_file.name)[1].lower()
+
+    def update_progress(self, current_page: int, total_pages: int):
+        """
+        Update the progress of the translation.
+
+        :param current_page: Current page number being translated.
+        :param total_pages: Total number of pages in the document.
+        """
+        progress_data = {
+            "document_id": self.pk,
+            "current_page": current_page,
+            "total_pages": total_pages,
+            "file_name": f'original_{self.pk}{self.file_extension}'
+        }
+        progress_file = os.path.join(settings.MEDIA_ROOT, f'{self.pk}', f'{self.pk}_progress.json')
+        os.makedirs(os.path.dirname(progress_file), exist_ok=True)
+        with open(progress_file, 'w') as f:
+            json.dump(progress_data, f)
+
+# Signal handler to delete files from the filesystem when a Document instance is deleted
 @receiver(post_delete, sender=Document)
 def delete_files_on_document_delete(sender, instance, **kwargs):
+    """
+    Delete associated files from the filesystem when a Document instance is deleted.
+
+    :param sender: The model class that sent the signal.
+    :param instance: The instance of the model that was deleted.
+    :param kwargs: Additional keyword arguments.
+    """
     if instance.original_file:
-        instance.original_file.delete(save=False)
+        instance.original_file.delete(save=False)  # Delete the original file
     if instance.translated_file:
-        instance.translated_file.delete(save=False)
+        instance.translated_file.delete(save=False)  # Delete the translated file
