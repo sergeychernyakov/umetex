@@ -98,6 +98,9 @@ Plan:
   + hande javascript errors
 
   - перевод картинок
+    + распознает мало текста
+
+    - spelling check
 
   - добавить админку
 
