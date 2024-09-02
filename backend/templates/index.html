@@ -171,7 +171,7 @@
                             <tbody>
                                 {% for document in page_obj %}
                                 <tr>
-                                    <td>{{ document.title }}</td>
+                                    <td class="document_title">{{ document.title_short }}</td>
                                     <td>{{ document.get_translation_language_display }}</td>
                                     <td>
                                         {% if document.original_file %}
@@ -183,11 +183,9 @@
                                     <td>{{ document.uploaded_at|date:"d.m.Y" }}</td>
                                     <td>
                                         {% if document.translated_file %}
-                                        <a href="{{ document.translated_file.url }}" class="download-btn"
-                                            target="_blank">Скачать перевод</a>
+                                        <a href="{{ document.translated_file.url }}" class="download-btn" target="_blank">Скачать перевод</a>
                                         {% else %}
-                                        <a href="{{ document.original_file.url }}" class="download-btn"
-                                            target="_blank">Скачать</a>
+                                        <a href="{{ document.original_file.url }}" class="download-btn" target="_blank">Скачать</a>
                                         {% endif %}
                                     </td>
                                 </tr>

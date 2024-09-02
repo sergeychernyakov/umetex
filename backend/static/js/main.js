@@ -119,7 +119,6 @@ document.addEventListener('DOMContentLoaded', function() {
             toggleVisibility(fileUploadBlock);
         });
     }
-
     function startRealTranslationProgress(data) {
         let currentPage = 0;
         let totalPages = 1;
@@ -130,6 +129,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 .then(data => {
                     if (data.error) {
                         console.error(data.error);
+                        errorMessage.textContent = 'Произошла ошибка при проверке прогресса. Пожалуйста, попробуйте позже.';
+                        errorMessage.style.display = 'block';
+                        toggleVisibility(fileUploadBlock);  // Switch back to the file upload block
                         clearInterval(translationInterval);
                     } else {
                         currentPage = data.current_page;
@@ -148,8 +150,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 })
                 .catch(error => {
                     console.error('Error fetching progress:', error);
-                    errorMessage.textContent = 'Произошла ошибка при проверке прогресса: ' + error;
+                    errorMessage.textContent = 'Произошла ошибка при проверке прогресса. Пожалуйста, попробуйте позже.';
                     errorMessage.style.display = 'block';
+                    toggleVisibility(fileUploadBlock);
                     clearInterval(translationInterval);
                 });
         }, 1000); // Check every second

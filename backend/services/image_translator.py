@@ -7,9 +7,6 @@ from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageFilter, ImageOps
 from django.conf import settings
 from backend.services.text_translator import TextTranslator
 import re
-import itertools
-from collections import defaultdict
-import statistics
 
 # Set up logging
 logger = logging.getLogger(__name__)
@@ -22,6 +19,8 @@ class ImageTranslator:
         :param document: Document instance containing the original image and translation details.
         """
         self.document = document
+        self.total_pages = 1
+        self.current_page = 0
         self.original_image_path = document.original_file.path
         file_extension = os.path.splitext(self.document.original_file.name)[1].lower()
         self.translated_image_name = f"translated_{document.pk}{file_extension}"
@@ -139,39 +138,47 @@ class ImageTranslator:
 
             mask = Image.new('L', blurred_area.size, 0)
             mask_draw = ImageDraw.Draw(mask)
-            mask_draw.ellipse((0, 0, blurred_area.size[0], blurred_area.size[1]), fill=200)
+            mask_draw.ellipse((0, 0, blurred_area.size[0], blurred_area.size[1]), fill=245)
 
             blurred_area_with_oval = Image.composite(blurred_area, text_area, mask)
             image.paste(blurred_area_with_oval, blur_area)
 
-    def overlay_text(self, image: Image, text_positions: list, translated_texts: list) -> None:
+    def overlay_text(self, image: Image, text_positions: list, original_texts: list, translated_texts: list) -> None:
         """
         Overlay translated text onto the image.
 
         :param image: Image to draw text on.
         :param text_positions: List of positions to draw text at.
+        :param original_texts: List of original texts (not used in the current implementation).
         :param translated_texts: List of translated texts to draw.
         """
+        # Create a drawing context on the provided image
         draw = ImageDraw.Draw(image)
-        for (x, y, width, height), translated_text in zip(text_positions, translated_texts):
+
+        # Iterate over each pair of text position and corresponding translated text
+        for (x, y, width, height), original_text, translated_text in zip(text_positions, original_texts, translated_texts):
+            # Calculate the initial font size based on the height of the text box, with a minimum size of 10
             font_size = max(10, int(height * 0.8))
-            font = ImageFont.truetype(self.font_path, font_size)
-            text_bbox = draw.textbbox((0, 0), translated_text, font=font)
+
+            # Load the font with the calculated size
+            font = ImageFont.truetype(self.font_path, font_size-2)
+
+            # Get the bounding box of the translated text to calculate its width
+            text_bbox = draw.textbbox((0, 0), original_text, font=font)
             text_width = text_bbox[2] - text_bbox[0]
 
-            while text_width > width and font_size > 1:
-                font_size -= 1
-                font = ImageFont.truetype(self.font_path, font_size)
-                text_bbox = draw.textbbox((0, 0), translated_text, font=font)
-                text_width = text_bbox[2] - text_bbox[0]
-
-            while text_width < width and font_size < 100:
+            # Adjust the font size upwards if the text width is significantly smaller than the available width
+            while text_width < width and font_size < 20:
                 font_size += 1
-                font = ImageFont.truetype(self.font_path, font_size)
-                text_bbox = draw.textbbox((0, 0), translated_text, font=font)
+
+                font = ImageFont.truetype(self.font_path, font_size-2)
+                text_bbox = draw.textbbox((0, 0), original_text, font=font)
                 text_width = text_bbox[2] - text_bbox[0]
 
+            # Draw the translated text on the image at the specified position
             draw.text((x, y), translated_text, font=font, fill="black")
+
+            # Log the application of the translated text for debugging purposes
             logger.debug(f"Applied translated text: '{translated_text}' at position ({x}, {y}) with font size {font_size}")
 
     def filter_duplicate_texts(self, all_texts_positions: list) -> tuple[list, list]:
@@ -251,7 +258,7 @@ class ImageTranslator:
 
                 # Apply blur and overlay text onto the original image
                 self.apply_blur(original_image, cleaned_positions)
-                self.overlay_text(original_image, cleaned_positions, cleaned_texts)
+                self.overlay_text(original_image, cleaned_positions, cleaned_texts, cleaned_texts)
 
                 # Construct filename with parameters
                 params_filename = (
@@ -270,17 +277,19 @@ class ImageTranslator:
         # Filter duplicate texts to keep only the most accurate ones
         filtered_texts, filtered_positions = self.filter_duplicate_texts(all_texts_positions)
 
-        if debug:
-            translated_texts = filtered_texts  # For now, using filtered texts directly
-        else:
-            translated_texts = self.translator.translate_texts(filtered_texts)  # Replace with actual translation logic
+        translated_texts = filtered_texts
+
+        # if debug:
+        #     translated_texts = filtered_texts  # For now, using filtered texts directly
+        # else:
+        #     translated_texts = self.translator.translate_texts(filtered_texts)  # Replace with actual translation logic
 
         # Load the original image in RGB for final overlay and saving
         final_original_image = Image.open(self.original_image_path).convert('RGB')
 
         # Apply blur and overlay text onto the original image
         self.apply_blur(final_original_image, filtered_positions)
-        self.overlay_text(final_original_image, filtered_positions, translated_texts)
+        self.overlay_text(final_original_image, filtered_positions, filtered_texts, translated_texts)
 
         try:
             final_original_image.save(self.translated_image_path)

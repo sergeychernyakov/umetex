@@ -31,8 +31,11 @@ SECRET_KEY = 'django-insecure-m+9l+mfsp2ay1^fvl$rh2ugd=8n1dch(@44_z&1&r8yvcl3+j1
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
+CSRF_TRUSTED_ORIGINS = [
+    'https://2970-83-20-77-199.ngrok-free.app'
+]
 
 # Application definition
 
@@ -50,6 +53,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -111,14 +115,17 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/4.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'ru'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Europe/Moscow'
 
 USE_I18N = True
-
+USE_L10N = True
 USE_TZ = True
 
+LOCALE_PATHS = [
+    os.path.join(BASE_DIR, 'locale'),
+]
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
@@ -131,7 +138,7 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, 'backend/static')]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-SUPPORTED_FILE_FORMATS = ['.pdf', '.jpg', '.jpeg', '.png']
+SUPPORTED_FILE_FORMATS = ['.pdf', '.docx', '.jpg', '.jpeg', '.png']
 
 MAX_FILE_SIZE_MB = 5
 
@@ -139,3 +146,7 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
 
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
+YANDEX_IAM_TOKEN = os.getenv('YANDEX_IAM_TOKEN')
+YANDEX_FOLDER_ID=os.getenv('YANDEX_FOLDER_ID')
+
+LOGIN_URL = '/admin/login/' 

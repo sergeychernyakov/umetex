@@ -1,5 +1,3 @@
-// src/static/js/main.js
-
 document.addEventListener('DOMContentLoaded', function() {
     const fileInput = document.getElementById('fileInput');
     const fileInputButton = document.getElementById('fileInputButton');
@@ -121,29 +119,29 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function startRealTranslationProgress(data) {
-        let currentPage = 0;
-        let totalPages = 1;
         let documentId = data.document_id;
-        let fileName = data.file_name || `translated_${documentId}.pdf`;
-
         translationInterval = setInterval(() => {
             fetch(`/progress/${documentId}/`)
                 .then(response => response.json())
                 .then(data => {
                     if (data.error) {
+                        // Display the error message and switch back to the upload block
                         console.error(data.error);
+                        errorMessage.textContent = data.error;
+                        errorMessage.style.display = 'block';
                         clearInterval(translationInterval);
+                        toggleVisibility(fileUploadBlock);
                     } else {
-                        currentPage = data.current_page;
-                        totalPages = data.total_pages;
-    
+                        let currentPage = data.current_page;
+                        let totalPages = data.total_pages;
+                        let fileName = data.file_name;
+
                         translatedPages.textContent = `${currentPage}/${totalPages}`;
                         let progressPercentage = 40 + ((currentPage / totalPages) * 60);
                         progressBar.style.width = `${progressPercentage}%`;
-    
+
                         if (currentPage >= totalPages) {
                             clearInterval(translationInterval);
-                            // Construct the file path using the file extension
                             showTranslationComplete(`/media/${documentId}/translations/${fileName}`);
                         }
                     }
@@ -153,6 +151,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     errorMessage.textContent = 'Произошла ошибка при проверке прогресса: ' + error;
                     errorMessage.style.display = 'block';
                     clearInterval(translationInterval);
+                    toggleVisibility(fileUploadBlock);
                 });
         }, 1000); // Check every second
     }

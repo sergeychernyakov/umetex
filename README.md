@@ -78,6 +78,9 @@ The application has been tested on:
 Feel free to contribute to the project by opening a pull request or submitting an issue on GitHub. Ensure to follow the project's coding standards and include tests for any new functionality.
 
 
+## Admin section
+ttp://localhost:8000/admin/
+admin: password123
 
 
 Plan:
@@ -99,14 +102,18 @@ Plan:
 
   - перевод картинок
     + распознает мало текста
-
-    - spelling check
+    + исправить размер шрифта
+    + применить цвет шрифта
+    + тестировать другие картинки
 
   - добавить админку
+  - поправить историю переводов
+  - ngrok
+
 
   - тестировать в разных браузерах, разрешениях
   - тестировать на телефоне
-  - почему pdf файлы такеи большие получаются?
+  - оптимизировать размер PDF
 
  - cleanup requirements.txt
  - update README

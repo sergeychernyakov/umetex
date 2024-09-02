@@ -85,6 +85,10 @@ LANGUAGES = [
 ]
 
 class Document(models.Model):
+    class Meta:
+        verbose_name = "Документ"
+        verbose_name_plural = "Документы"
+
     """
     Model to represent a document for translation. Stores original and translated files, along with language details.
     """
@@ -164,14 +168,57 @@ class Document(models.Model):
             translator = PDFTranslator(self)
             translator.translate_pdf()
         elif self.file_extension in ['.jpg', '.jpeg', '.png']:
-            from backend.services.image_translator import ImageTranslator
-
             # Use ImageTranslator for image files
+
+            from backend.services.image_translator import ImageTranslator
             translator = ImageTranslator(self)
+
+            # from backend.services.image_translator_with_openai import ImageTranslatorWithOpenAI
+            # translator = ImageTranslatorWithOpenAI(self)
             translator.translate_image()
         else:
             logger.error(f"Unsupported file type for translation: {self.file_extension}")
             raise ValueError(f"Unsupported file type for translation: {self.file_extension}")
+
+    def translate(self):
+        """
+        Perform translation on the document using either the PDFTranslator or ImageTranslator class,
+        depending on the type of the original file.
+        """
+        try:
+            if self.file_extension == '.pdf':
+                from backend.services.pdf_translator import PDFTranslator
+
+                translator = PDFTranslator(self)
+                translator.translate_pdf()
+            elif self.file_extension in ['.jpg', '.jpeg', '.png']:
+                from backend.services.image_translator import ImageTranslator
+                translator = ImageTranslator(self)
+                translator.translate_image()
+            else:
+                logger.error(f"Unsupported file type for translation: {self.file_extension}")
+                raise ValueError(f"Unsupported file type for translation: {self.file_extension}")
+
+        except Exception as e:
+            error_message = str(e)
+            logger.error(f"Error during translation for document {self.pk}: {error_message}")
+            # Update progress with error information
+            self.update_progress(current_page=translator.current_page, total_pages=translator.total_pages, error=True, error_message=error_message)
+            raise  # Re-raise the exception to stop the process
+
+    def title_short(self) -> str:
+        """
+        Returns a truncated version of the title if it exceeds a certain length.
+        
+        :return: A short version of the title with an ellipsis if truncated.
+        """
+        max_length = 15
+        ext_length = 7  # Length to keep from the end, including the extension
+        if len(self.title) > max_length:
+            start = self.title[:max_length - ext_length]
+            end = self.title[-ext_length:]
+            return f"{start}..{end}"
+        return self.title
 
     @property
     def file_extension(self) -> str:
@@ -182,12 +229,14 @@ class Document(models.Model):
         """
         return os.path.splitext(self.original_file.name)[1].lower()
 
-    def update_progress(self, current_page: int, total_pages: int):
+    def update_progress(self, current_page: int, total_pages: int, error: bool = False, error_message: str = ""):
         """
-        Update the progress of the translation.
+        Update the progress of the translation, including handling errors.
 
         :param current_page: Current page number being translated.
         :param total_pages: Total number of pages in the document.
+        :param error: Boolean indicating if an error occurred.
+        :param error_message: Error message describing the issue.
         """
         progress_data = {
             "document_id": self.pk,
@@ -195,10 +244,18 @@ class Document(models.Model):
             "total_pages": total_pages,
             "file_name": f'translated_{self.pk}{self.file_extension}'
         }
+
+        # Include error information only if an error occurred
+        if error:
+            progress_data["error"] = True
+            progress_data["error_message"] = error_message
+
         progress_file = os.path.join(settings.MEDIA_ROOT, f'{self.pk}', f'{self.pk}_progress.json')
         os.makedirs(os.path.dirname(progress_file), exist_ok=True)
         with open(progress_file, 'w') as f:
             json.dump(progress_data, f)
+
+        logger.debug(f"Progress updated for document {self.pk}: {progress_data}")
 
 # Signal handler to delete files from the filesystem when a Document instance is deleted
 @receiver(post_delete, sender=Document)

@@ -5,7 +5,7 @@ import random
 import logging
 from typing import List, Optional
 from openai import OpenAI
-from django.conf import settings
+from backend.models.app_config import AppConfig
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +19,38 @@ class TextTranslator:
         :param max_tokens: Max tokens for the OpenAI model.
         """
         self.translation_language = translation_language
-        self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
         self.temperature = temperature
         self.max_tokens = max_tokens
+        self.prompt = self.get_prompt()
+        self.api_key = self.get_api_key()
+        self.model = self.get_model()
+        self.client = OpenAI(api_key=self.api_key)
+
+    def get_model(self) -> str:
+        try:
+            return AppConfig.objects.get(key="openai_model").value
+        except AppConfig.DoesNotExist:
+            return "gpt-4o"  # Default value
+
+    def get_api_key(self) -> str:
+        """
+        Get the OpenAI API key from AppConfig.
+        """
+        try:
+            return AppConfig.objects.get(key="openai_api_key").value
+        except AppConfig.DoesNotExist:
+            raise ValueError("OpenAI API key is not configured. Please set it in AppConfig.")
+
+    def get_prompt(self) -> str:
+        """
+        Get the translation prompt for the TextTranslator, replacing placeholders with real values.
+        """
+        try:
+            raw_prompt = AppConfig.objects.get(key="text_translator_prompt").value
+            # Replace placeholders with actual values
+            return raw_prompt.format(translation_language=self.translation_language)
+        except AppConfig.DoesNotExist:
+            return f"You are a helpful assistant for translating documents into {self.translation_language}."
 
     def translate_texts(self, texts: List[str]) -> List[Optional[str]]:
         """
@@ -61,7 +90,6 @@ class TextTranslator:
         }
 
         # Enhanced prompt to guide the translation process
-        prompt = f"You are a helpful assistant for translating documents into {self.translation_language}."
         message = (
             "The following is a list of text segments extracted from a medical document. "
             "Translate each text segment into the target language, ensuring that each translation directly replaces the placeholder "
@@ -74,7 +102,7 @@ class TextTranslator:
             logger.debug(f"Prepared shuffled text segment for translation: text_{original_index}: [{text}]")
 
         # Initialize the dictionary to hold the extracted data
-        translated_text = self.translate_text(prompt, message)
+        translated_text = self.translate_text(self.get_prompt(), message)
         logger.debug(f"Translated text received: {translated_text}")
 
         # Extract and filter matches for each pattern, and strip spaces from the strings
@@ -108,7 +136,7 @@ class TextTranslator:
         logger.debug(f"Sending message to OpenAI API: {message}")
 
         response = self.client.chat.completions.create(
-            model="gpt-4o",
+            model=self.model,
             messages=[
                 {"role": "system", "content": prompt},
                 {"role": "user", "content": message}

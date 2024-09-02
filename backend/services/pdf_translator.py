@@ -21,6 +21,8 @@ class PDFTranslator:
         :param document: Document instance containing the original PDF and translation details.
         """
         self.document = document
+        self.total_pages = 1
+        self.current_page = 0
         self.original_pdf_path = document.original_file.path
         self.translated_file_name = f"translated_{document.pk}.pdf"
         self.translations_dir = os.path.join(settings.MEDIA_ROOT, str(document.pk), 'translations')
@@ -38,11 +40,12 @@ class PDFTranslator:
         """
         original_pdf = fitz.open(self.original_pdf_path)
         translated_pdf = fitz.open()
-        total_pages = len(original_pdf)
-        self.document.update_progress(1, total_pages) # don't remove that
+        self.total_pages = len(original_pdf)
+        self.document.update_progress(1, self.total_pages) # don't remove that
 
-        for page_number in range(total_pages):
-            logger.debug(f"Processing page {page_number + 1} of {total_pages}")
+        for page_number in range(self.total_pages):
+            self.current_page = page_number + 1
+            logger.debug(f"Processing page {page_number + 1} of {self.total_pages}")
 
             original_page = original_pdf[page_number]
             new_page = translated_pdf.new_page(width=original_page.rect.width, height=original_page.rect.height)
@@ -62,6 +65,7 @@ class PDFTranslator:
 
             # Translate extracted texts from the current page
             translated_texts = self.translator.translate_texts(page_texts)
+            # translated_texts = page_texts
 
             # Apply translated texts back to the current page
             text_index = 0
@@ -124,7 +128,7 @@ class PDFTranslator:
                                     logger.error(f"Failed to insert text at {bbox.tl} on page {page_number + 1}")
 
             # Update progress after translating each page
-            self.document.update_progress(page_number + 1, total_pages)
+            self.document.update_progress(self.current_page, self.total_pages)
 
         # Save the translated PDF
         logger.debug(f"Saving translated PDF to {self.translated_file_path}")
@@ -145,7 +149,7 @@ class PDFTranslator:
 
         :param dir_x: X direction component.
         :param dir_y: Y direction component.
-        :return: Rotation angle in degrees.
+        :return: Rotation angle in degrees, rounded to nearest valid value (0, 90, 180, 270).
         """
         # Calculate the angle in radians and then convert to degrees
         rotate_angle = math.degrees(math.atan2(dir_y, dir_x))
@@ -154,21 +158,18 @@ class PDFTranslator:
         if rotate_angle < 0:
             rotate_angle += 360
 
-        # Round the angle to the nearest integer
-        rotate_angle = round(rotate_angle)
-
-        # Special cases for exact directions
-        if (dir_x, dir_y) == (0.0, 1.0):
-            rotate_angle = 270
-        elif (dir_x, dir_y) == (0.0, -1.0):
-            rotate_angle = 90
-        elif (dir_x, dir_y) == (-1.0, 0.0):
-            rotate_angle = 180
-        elif (dir_x, dir_y) == (1.0, 0.0):
-            rotate_angle = 0
-
         # Log the calculated angle for debugging purposes
-        return rotate_angle
+        logger.debug(f"Calculated raw rotation angle: {rotate_angle}")
+
+        # Map to the nearest valid angle (0, 90, 180, 270)
+        if rotate_angle < 45 or rotate_angle >= 315:
+            return 0
+        elif 45 <= rotate_angle < 135:
+            return 90
+        elif 135 <= rotate_angle < 225:
+            return 180
+        elif 225 <= rotate_angle < 315:
+            return 270
 
     @staticmethod
     def normalize_color(color: Optional[int]) -> Tuple[float, float, float]:

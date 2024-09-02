@@ -97,6 +97,8 @@ def check_translation_progress(request, document_id):
     if os.path.exists(progress_file):
         with open(progress_file, 'r') as f:
             progress_data = json.load(f)
+        if progress_data.get("error"):
+            return JsonResponse({"error": progress_data["error_message"]}, status=500)
         return JsonResponse(progress_data)
     else:
         return JsonResponse({"error": "Прогресс недоступен"}, status=404)

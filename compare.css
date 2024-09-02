@@ -1,5 +1,3 @@
-/* backend/static/css/style.css */
-
 /* Reset and base styles */
 * {
   margin: 0;
@@ -73,7 +71,6 @@ header .header_block .title_header h1 span {
 }
 
 /* File upload styles */
-
 .file_upload .upload-container {
   text-align: center;
   border: 8px dashed #ccc;
@@ -182,13 +179,10 @@ header .header_block .title_header h1 span {
 }
 
 .history_file .table_history .document-table {
+  table-layout: fixed; /* Ensures table respects column width definitions */
   width: 100%;
   border-collapse: collapse;
   margin: 20px 0;
-}
-
-.history_file .table_history .document-table thead tr {
-  border-top-left-radius: 45px;
 }
 
 .history_file .table_history .document-table th,
@@ -199,11 +193,37 @@ header .header_block .title_header h1 span {
   font-weight: 400;
   line-height: 29.05px;
   text-align: left;
+  white-space: nowrap; /* Prevents wrapping */
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.history_file .table_history .document-table th {
-  font-weight: 700;
-  color: #000;
+/* Define specific widths for each column */
+.history_file .table_history .document-table th:nth-child(1),
+.history_file .table_history .document-table td:nth-child(1) {
+  width: 30%;  /* Width for file name column */
+  max-width: 200px;
+}
+
+.history_file .table_history .document-table th:nth-child(2),
+.history_file .table_history .document-table td:nth-child(2) {
+  width: 15%;  /* Width for language column */
+  max-width: 100px;
+}
+
+.history_file .table_history .document-table th:nth-child(3),
+.history_file .table_history .document-table td:nth-child(3) {
+  width: 15%;  /* Width for file size column */
+}
+
+.history_file .table_history .document-table th:nth-child(4),
+.history_file .table_history .document-table td:nth-child(4) {
+  width: 20%;  /* Width for date column */
+}
+
+.history_file .table_history .document-table th:nth-child(5),
+.history_file .table_history .document-table td:nth-child(5) {
+  width: 20%;  /* Width for download button column */
 }
 
 .history_file .table_history .document-table tr:nth-child(even) {
@@ -247,13 +267,11 @@ header .header_block .title_header h1 span {
 .select-file {
   color: #00cc66;
 }
-
 /* File uploaded styles */
 .file_uploaded.active {
   margin-top: 63px;
   margin-bottom: 44px;
 }
-
 
 .file_uploaded .info_upload p {
   font-family: Inter;
@@ -522,7 +540,6 @@ header .header_block .title_header h1 span {
   text-align: center;
   cursor: pointer;
 }
-
 
 .translating .info_upload p {
   font-family: Inter;
@@ -900,54 +917,20 @@ header .header_block .title_header h1 span {
     max-height: 700px; /* Adjust to a value large enough to cover the largest content */
 }
 
-#progressBar {
-    position: relative;
-    width: 100%;
-    padding: 30px 44px;
-    display: flex;
-    align-items: center;
-    background: #5FB248;  /* Base background color */
-    border-radius: 44px;
-    overflow: hidden;  /* Ensures content stays inside the border radius */
-    z-index: 1;  /* Ensure it's above other elements */
-}
-
-#progressBar::before {
-    content: "";  /* Creates a pseudo-element to display animated stripes */
-    position: absolute;  /* Positions it relative to the #progressBar */
-    top: 0;  /* Aligns the top edge of the pseudo-element with the top of #progressBar */
-    left: 0;  /* Aligns the left edge of the pseudo-element with the left of #progressBar */
-    width: 1000%;  /* Extends beyond the visible area for a smooth animation effect */
-    height: 100%;  /* Matches the height of the #progressBar */
-    background: repeating-linear-gradient(
-        135deg,  /* Sets the angle of the stripes, creating diagonal lines */
-        rgba(255, 255, 255, 0.2) 0,  /* Light semi-transparent color for stripes */
-        rgba(255, 255, 255, 0.2) 40px,  /* Width of the light stripe */
-        transparent 40px,  /* Start of the transparent part */
-        transparent 80px  /* Width of the transparent part */
-    );
-    animation: moveStripesLeftToRight 3s linear infinite;  /* Defines the animation to move stripes from left to right continuously */
-    z-index: 0;  /* Places the pseudo-element below the actual content of #progressBar */
-}
-
-#progressBar p {
-    z-index: 1;  /* Ensures the text is displayed above the animated stripes */
-    position: relative;  /* Makes the text position relative to its normal position */
-    font-family: Inter;  /* Sets the font family for the text */
-    font-size: 24px;  /* Sets the size of the text */
-    font-weight: 400;  /* Normal font weight */
-    line-height: 29.05px;  /* Sets the line height for spacing */
-    text-align: center;  /* Centers the text inside the progress bar */
-    color: #fff;  /* Sets the text color to white */
-    display: flex;  /* Uses flexbox for alignment */
-    align-items: center;  /* Vertically centers the text within the #progressBar */
-}
-
-@keyframes moveStripesLeftToRight {
-    from {
-        background-position: 0 0;  /* Starts the stripes from the left edge */
-    }
-    to {
-        background-position: 200px 0;  /* Moves the background position to the right, creating the animation effect */
-    }
+/* Error message styles */
+.error-message {
+      font-family: Inter, sans-serif; /* Match the site's font */
+      font-size: 18px;                /* Consistent font size */
+      color: #D8000C;               /* Dark red color for text */
+      background-color: #f3dbdb;    /* Light red background for the error */
+      border: 2px solid #D8000C;    /* Border color to match text */
+      border-radius: 15px;            /* Rounded corners for a modern look */
+      padding: 15px 20px;             /* Padding for spacing */
+      margin: 40px 20px 0;            /* Space around the message */
+      text-align: center;             /* Center-align the text */
+      max-width: 880px;               /* Consistent width with other elements */
+      margin-left: auto;              /* Center the error message */
+      margin-right: auto;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+      display: block;                 /* Ensure the message is displayed */
 }

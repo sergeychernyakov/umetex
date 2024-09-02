@@ -1,363 +1,207 @@
-# src/services/image_translator.py
+# backend/services/pdf_translator.py
 
-import os
-import logging
-import pytesseract
-from PIL import Image, ImageDraw, ImageFont, ImageEnhance, ImageFilter, ImageOps
-from django.conf import settings
-from backend.services.text_translator import TextTranslator
 import re
-import itertools
-from collections import defaultdict
-import statistics
-from spellchecker import SpellChecker
+import os
+import fitz  # PyMuPDF
+from django.conf import settings
+from typing import Tuple, Optional, List, Dict
+import logging
+import math
+from backend.models import Document
+from backend.services.text_translator import TextTranslator
+from backend.services.font_manager import FontManager
 
-# Set up logging
 logger = logging.getLogger(__name__)
 
-
-class ImageTranslator:
-    def __init__(self, document):
+class PDFTranslator:
+    def __init__(self, document: Document):
         """
-        Initialize the ImageTranslator with a Document instance.
+        Initialize the PDFTranslator with a Document instance.
 
-        :param document: Document instance containing the original image and translation details.
+        :param document: Document instance containing the original PDF and translation details.
         """
         self.document = document
-        self.original_image_path = document.original_file.path
-        file_extension = os.path.splitext(self.document.original_file.name)[1].lower()
-        self.translated_image_name = f"translated_{document.pk}{file_extension}"
-        self.processed_image_name = f"processed_{document.pk}{file_extension}"
+        self.original_pdf_path = document.original_file.path
+        self.translated_file_name = f"translated_{document.pk}.pdf"
         self.translations_dir = os.path.join(settings.MEDIA_ROOT, str(document.pk), 'translations')
         os.makedirs(self.translations_dir, exist_ok=True)
-        self.translated_image_path = os.path.join(self.translations_dir, self.translated_image_name)
-        self.processed_image_path = os.path.join(self.translations_dir, self.processed_image_name)
+        self.translated_file_path = os.path.join(self.translations_dir, self.translated_file_name)
         self.translator = TextTranslator(self.document.translation_language)
-        self.font_path = os.path.join(settings.BASE_DIR, 'fonts', 'Arial Bold.ttf')
+        self.font_manager = FontManager(self.document.translation_language)
 
-        logger.info(f"Initialized ImageTranslator for document ID: {document.pk}")
-
-    def process_image(self, brightness: float = 1.0, contrast: float = 1.0, noise_filter_size: int = 0, threshold: int = 128) -> Image:
+    def translate_pdf(self) -> str:
         """
-        Process the image with specified parameters.
+        Recreate the PDF by copying each page from the original PDF into a new PDF
+        and replacing all text with translated text using redaction annotations, retaining formatting.
 
-        :param brightness: Brightness enhancement factor.
-        :param contrast: Contrast enhancement factor.
-        :param noise_filter: Apply noise reduction if True.
-        :param threshold: Threshold value for binary conversion.
-        :return: Processed image.
+        :return: Path to the translated PDF file.
         """
-        try:
-            original_image = Image.open(self.original_image_path).convert('RGB')
-            processed_image = original_image.convert('L')
+        original_pdf = fitz.open(self.original_pdf_path)
+        translated_pdf = fitz.open()
+        total_pages = len(original_pdf)
+        self.document.update_progress(1, total_pages) # don't remove that
 
-            # Enhance brightness and contrast
-            processed_image = ImageEnhance.Brightness(processed_image).enhance(brightness)
-            processed_image = ImageEnhance.Contrast(processed_image).enhance(contrast)
-            logger.debug(f"Brightness enhanced by a factor of {brightness} and contrast by {contrast}")
+        for page_number in range(total_pages):
+            logger.debug(f"Processing page {page_number + 1} of {total_pages}")
 
-            # Apply noise reduction if specified
-            if noise_filter_size > 0:
-                processed_image = processed_image.filter(ImageFilter.MedianFilter(size=noise_filter_size))
-                logger.debug("Noise reduction applied using MedianFilter")
+            original_page = original_pdf[page_number]
+            new_page = translated_pdf.new_page(width=original_page.rect.width, height=original_page.rect.height)
+            new_page.show_pdf_page(new_page.rect, original_pdf, page_number)
 
-            # Apply adaptive thresholding
-            processed_image = ImageOps.autocontrast(processed_image)
-            processed_image = processed_image.point(lambda p: p > threshold and 255)
-            logger.debug(f"Thresholding applied with a value of {threshold}")
+            text_dict = original_page.get_text("dict")
+            page_texts = []  # Reset text list for each page
 
-            # Save the processed image
-            processed_image.save(self.processed_image_path)
-            logger.info(f"Processed image saved at: {self.processed_image_path}")
+            # Extract text from the current page
+            for block in text_dict['blocks']:
+                if block['type'] == 0:  # Text block
+                    for line in block['lines']:
+                        for span in line['spans']:
+                            original_text = span["text"].strip()
+                            if original_text and re.search(r'[A-Za-z0-9]', original_text):
+                                page_texts.append(original_text)
 
-            return processed_image
-        except Exception as e:
-            logger.error(f"Failed to process image: {e}")
-            raise
+            # Translate extracted texts from the current page
+            # translated_texts = self.translator.translate_texts(page_texts)
+            translated_texts = page_texts
 
-    def extract_text(self, image: Image, oem: int = 3, psm: int = 4) -> tuple[list, list]:
+            # Apply translated texts back to the current page
+            text_index = 0
+            for block in text_dict['blocks']:
+                if block['type'] == 0:  # Text block
+                    for line in block['lines']:
+                        for span in line['spans']:
+                            original_text = span["text"].strip()
+                            bbox = fitz.Rect(span["bbox"])
+                            font_size = round(span.get("size", 12))-2
+                            color = self.normalize_color(span.get("color", 0))
+                            origin = span.get("origin", (0, 0))
+                            ascender = span.get("ascender", 0)
+                            descender = span.get("descender", 0)
+                            
+                            # Determine the rotation angle based on the direction
+                            dir_x, dir_y = line.get('dir', (1.0, 0.0))
+                            rotate_angle = self.calculate_rotation_angle(dir_x, dir_y)
+
+                            # Get font name and path
+                            fontname = self.font_manager.clean_font_name(span.get("font", "Arial"))
+                            font_path = self.font_manager.find_font_path(fontname)
+
+                            # Check if the font file exists
+                            if not os.path.exists(font_path):
+                                logger.warning(f"Font '{fontname}' not found. Using Arial as default.")
+                                fontname = 'Arial'
+                                font_path = os.path.join(self.font_manager.fonts_dir, 'Arial.ttf')
+
+                            # Register the font dynamically
+                            new_page.insert_font(fontname=fontname, fontfile=font_path)
+
+                            if re.search(r'[A-Za-z0-9]', original_text):
+                                translated_text = translated_texts[text_index] if text_index < len(translated_texts) else original_text
+                                text_index += 1
+                                
+                                fmt = "{:g} {:g} {:g} rg /{f:s} {s:g} Tf"
+                                da_str = fmt.format(*color, f='helv', s=font_size)
+                                logger.debug(f"Adding redaction annotation on page {page_number + 1}")
+                                new_page._add_redact_annot(quad=bbox, da_str=da_str)
+
+                                # Apply redactions and insert translated text with rotation
+                                new_page.apply_redactions()  # Apply changes per page
+
+                                # Calculate the adjusted position using origin, ascender, and descender
+                                adjusted_origin = (origin[0], origin[1] - ascender + descender)
+
+                                # Use the insert_text method directly on the page
+                                rc = new_page.insert_text(
+                                    point=adjusted_origin,
+                                    text=translated_text,
+                                    fontsize=font_size,
+                                    fontname=fontname,
+                                    fontfile=font_path,
+                                    color=color,
+                                    rotate=rotate_angle,
+                                    overlay=True
+                                )
+                                if rc < 0:
+                                    logger.error(f"Failed to insert text at {bbox.tl} on page {page_number + 1}")
+
+            # Update progress after translating each page
+            self.document.update_progress(page_number + 1, total_pages)
+
+        # Save the translated PDF
+        logger.debug(f"Saving translated PDF to {self.translated_file_path}")
+
+        translated_pdf.save(self.translated_file_path)
+        translated_pdf.close()
+        original_pdf.close()
+
+        self.document.translated_file.name = f'{self.document.pk}/translations/{self.translated_file_name}'
+        self.document.save()
+
+        logger.debug(f"Recreated file saved at: {self.translated_file_path}")
+        return self.translated_file_path
+
+    def calculate_rotation_angle(self, dir_x: float, dir_y: float) -> int:
         """
-        Extract text from the image using OCR.
+        Calculate the rotation angle based on the text direction.
 
-        :param image: Image to perform OCR on.
-        :param oem: OCR Engine Mode.
-        :param psm: Page Segmentation Mode.
-        :return: Tuple of extracted texts and their positions.
+        :param dir_x: X direction component.
+        :param dir_y: Y direction component.
+        :return: Rotation angle in degrees.
         """
-        custom_config = f'--oem {oem} --psm {psm}'
-        logger.debug(f"Using OCR config: {custom_config}")
-        ocr_data = pytesseract.image_to_data(image, config=custom_config, lang='eng', output_type=pytesseract.Output.DICT)
+        # Calculate the angle in radians and then convert to degrees
+        rotate_angle = math.degrees(math.atan2(dir_y, dir_x))
 
-        extracted_texts = []
-        text_positions = []
-        for i in range(len(ocr_data['text'])):
-            text = ocr_data['text'][i].strip()
-            if text:
-                x, y, width, height = ocr_data['left'][i], ocr_data['top'][i], ocr_data['width'][i], ocr_data['height'][i]
-                extracted_texts.append(text)
-                text_positions.append((x, y, width, height))
-                logger.debug(f"Extracted text: '{text}' at position ({x}, {y}, {width}, {height})")
+        # Normalize the angle to a positive value between 0 and 360 degrees
+        if rotate_angle < 0:
+            rotate_angle += 360
 
-        return extracted_texts, text_positions
+        # Round the angle to the nearest integer
+        rotate_angle = round(rotate_angle)
 
-    def cleanup_texts(self, extracted_texts: list, text_positions: list) -> tuple[list, list]:
+        # Special cases for exact directions
+        if (dir_x, dir_y) == (0.0, 1.0):
+            rotate_angle = 270
+        elif (dir_x, dir_y) == (0.0, -1.0):
+            rotate_angle = 90
+        elif (dir_x, dir_y) == (-1.0, 0.0):
+            rotate_angle = 180
+        elif (dir_x, dir_y) == (1.0, 0.0):
+            rotate_angle = 0
+
+        # Log the calculated angle for debugging purposes
+        logger.debug(f"Calculated rotation angle: {rotate_angle}")
+        return rotate_angle
+
+    @staticmethod
+    def normalize_color(color: Optional[int]) -> Tuple[float, float, float]:
         """
-        Clean up texts by removing unnecessary texts like short texts, numbers, or special characters.
-
-        :param extracted_texts: List of extracted texts.
-        :param text_positions: List of text positions.
-        :return: Filtered texts and their corresponding positions.
+        Normalize color from integer or tuple form to (r, g, b) with values between 0 and 1.
         """
-        cleaned_texts = []
-        cleaned_positions = []
-        for text, position in zip(extracted_texts, text_positions):
-            # Remove special characters and retain texts with at least 60% alphabetic characters
-            cleaned_text = re.sub(r'[^a-zA-Z0-9\s]', '', text)
-            if len(cleaned_text) > 1 and (len(re.findall(r'[a-zA-Z]', cleaned_text)) / len(cleaned_text) > 0.6):
-                cleaned_texts.append(cleaned_text)
-                cleaned_positions.append(position)
-                logger.debug(f"Text '{cleaned_text}' retained for translation")
-            else:
-                logger.debug(f"Text '{text}' skipped during cleanup")
+        if isinstance(color, int):  # If color is an integer
+            r = (color >> 16) & 0xff
+            g = (color >> 8) & 0xff
+            b = color & 0xff
+            return (r / 255.0, g / 255.0, b / 255.0)
+        elif isinstance(color, tuple) and len(color) == 3:
+            return tuple(c / 255.0 for c in color)
+        return (0, 0, 0)  # Default to black if color is invalid
 
-        return cleaned_texts, cleaned_positions
-
-    def apply_blur(self, image: Image, text_positions: list) -> None:
-        """
-        Apply blur effect to areas around text positions.
-
-        :param image: Image to apply blur on.
-        :param text_positions: List of text positions to blur around.
-        """
-        for (x, y, width, height) in text_positions:
-            blur_margin = 30
-            blur_area = (max(x - blur_margin, 0), max(y - blur_margin, 0), min(x + width + blur_margin, image.width), min(y + height + blur_margin, image.height))
-            text_area = image.crop(blur_area)
-            blurred_area = text_area.filter(ImageFilter.GaussianBlur(radius=20))
-
-            mask = Image.new('L', blurred_area.size, 0)
-            mask_draw = ImageDraw.Draw(mask)
-            mask_draw.ellipse((0, 0, blurred_area.size[0], blurred_area.size[1]), fill=200)
-
-            blurred_area_with_oval = Image.composite(blurred_area, text_area, mask)
-            image.paste(blurred_area_with_oval, blur_area)
-
-    def overlay_text(self, image: Image, text_positions: list, translated_texts: list) -> None:
-        """
-        Overlay translated text onto the image.
-
-        :param image: Image to draw text on.
-        :param text_positions: List of positions to draw text at.
-        :param translated_texts: List of translated texts to draw.
-        """
-        draw = ImageDraw.Draw(image)
-        for (x, y, width, height), translated_text in zip(text_positions, translated_texts):
-            font_size = max(10, int(height * 0.8))
-            font = ImageFont.truetype(self.font_path, font_size)
-            text_bbox = draw.textbbox((0, 0), translated_text, font=font)
-            text_width = text_bbox[2] - text_bbox[0]
-
-            while text_width > width and font_size > 1:
-                font_size -= 1
-                font = ImageFont.truetype(self.font_path, font_size)
-                text_bbox = draw.textbbox((0, 0), translated_text, font=font)
-                text_width = text_bbox[2] - text_bbox[0]
-
-            while text_width < width and font_size < 100:
-                font_size += 1
-                font = ImageFont.truetype(self.font_path, font_size)
-                text_bbox = draw.textbbox((0, 0), translated_text, font=font)
-                text_width = text_bbox[2] - text_bbox[0]
-
-            draw.text((x, y), translated_text, font=font, fill="black")
-            logger.debug(f"Applied translated text: '{translated_text}' at position ({x}, {y}) with font size {font_size}")
-
-    def filter_duplicate_texts(self, all_texts_positions: list) -> tuple[list, list]:
-        """
-        Simplified filtering to remove duplicate texts based on unique text content.
-
-        :param all_texts_positions: List of all extracted texts with positions from different parameter settings.
-        :return: List of unique texts and their corresponding positions.
-        """
-        unique_texts = set()
-        filtered_texts = []
-        filtered_positions = []
-
-        for texts, positions in all_texts_positions:
-            for text, position in zip(texts, positions):
-                cleaned_text = re.sub(r'[^a-zA-Z0-9\s]', '', text)
-                if cleaned_text and cleaned_text not in unique_texts:
-                    unique_texts.add(cleaned_text)
-                    filtered_texts.append(text)
-                    filtered_positions.append(position)
-                    logger.debug(f"Added unique text: '{text}' at position {position}")
-
-        return filtered_texts, filtered_positions
-
-    def filter_duplicate_texts(self, all_texts_positions: list) -> tuple[list, list]:
-        """
-        Filter duplicate texts to choose the most accurate one by analyzing text positions.
-
-        :param all_texts_positions: List of all extracted texts with positions from different parameter settings.
-        :return: Filtered list of texts and their corresponding positions.
-        """
-        text_count = defaultdict(int)
-        position_map = defaultdict(list)
-
-        for texts, positions in all_texts_positions:
-            for text, position in zip(texts, positions):
-                cleaned_text = re.sub(r'[^a-zA-Z0-9\s]', '', text)
-                if cleaned_text:  # Skip empty or cleaned texts that are irrelevant
-                    text_count[cleaned_text] += 1
-                    position_map[cleaned_text].append(position)
-
-        filtered_texts = []
-        filtered_positions = []
-
-        # Use positions to eliminate duplicates by checking overlapping areas
-        used_positions = set()
-
-        for text, positions in position_map.items():
-            # Filter short texts and prioritize longer, repeated ones
-            if len(text) > 3 and text_count[text] > 1:
-                # Calculate average position for overlapping regions
-                avg_position = (
-                    int(statistics.mean([pos[0] for pos in positions])),
-                    int(statistics.mean([pos[1] for pos in positions])),
-                    int(statistics.mean([pos[2] for pos in positions])),
-                    int(statistics.mean([pos[3] for pos in positions])),
-                )
-
-                # Check if the position overlaps significantly with already filtered positions
-                if not self.is_overlapping_with_filtered(avg_position, used_positions):
-                    filtered_texts.append(text)
-                    filtered_positions.append(avg_position)
-                    used_positions.add(avg_position)
-                    logger.debug(f"Filtered text: '{text}' with average position: {avg_position}")
-
-        return filtered_texts, filtered_positions
-
-    def is_overlapping_with_filtered(self, position: tuple, used_positions: set) -> bool:
-        """
-        Check if the given position overlaps significantly with already used positions.
-
-        :param position: Position of the current text.
-        :param used_positions: Set of positions that have already been used.
-        :return: True if there is a significant overlap, False otherwise.
-        """
-        x, y, width, height = position
-        for (ux, uy, uwidth, uheight) in used_positions:
-            # Define overlap criteria (e.g., 50% overlap)
-            if (ux < x + width and ux + uwidth > x and
-                    uy < y + height and uy + uheight > y):
-                return True
-        return False
-
-    def translate_image(self) -> str:
-        """
-        Translate image by processing with specific parameter sets, extracting text, and overlaying translated text.
-
-        :return: Path to the translated image file.
-        """
-        self.document.update_progress(0, 1)
-
-        # Define specific parameter combinations to process
-        parameter_combinations = [
-
-            {'brightness': 1.2, 'contrast': 1.0, 'noise_filter_size': 3, 'threshold': 100, 'oem': 3, 'psm': 4},
-            {'brightness': 1.2, 'contrast': 2.0, 'noise_filter_size': 3, 'threshold': 128, 'oem': 3, 'psm': 4},
-            {'brightness': 1.5, 'contrast': 1.0, 'noise_filter_size': 3, 'threshold': 128, 'oem': 3, 'psm': 4},
-        ]
-
-        all_texts_positions = []
-
-        # Iterate over the specific parameter combinations
-        for params in parameter_combinations:
-            # Process image with the current set of parameters
-            processed_image = self.process_image(
-                brightness=params['brightness'],
-                contrast=params['contrast'],
-                noise_filter_size=params['noise_filter_size'],
-                threshold=params['threshold']
-            )
-
-            extracted_texts, text_positions = self.extract_text(processed_image, oem=params['oem'], psm=params['psm'])
-            cleaned_texts, cleaned_positions = self.cleanup_texts(extracted_texts, text_positions)
-
-            # Store results for later filtering
-            all_texts_positions.append((cleaned_texts, cleaned_positions))
-
-            # Load the original image in RGB for final overlay and saving
-            original_image = Image.open(self.original_image_path).convert('RGB')
-
-            # Apply blur and overlay text onto the original image
-            self.apply_blur(original_image, cleaned_positions)
-            self.overlay_text(original_image, cleaned_positions, cleaned_texts)
-
-            # Construct filename with parameters
-            params_filename = (
-                f"original_b{params['brightness']}_c{params['contrast']}_n{params['noise_filter_size']}_t{params['threshold']}_o{params['oem']}_p{params['psm']}.png"
-            )
-            params_image_path = os.path.join(self.translations_dir, params_filename)
-
-            try:
-                # Save the original image with effects using parameters in the filename
-                original_image.save(params_image_path)
-                logger.info(f"Original image saved with parameters at: {params_image_path}")
-            except Exception as e:
-                logger.error(f"Failed to save original image with parameters: {e}")
-                continue
-
-        # Filter duplicate texts to keep only the most accurate ones
-        filtered_texts, filtered_positions = self.filter_duplicate_texts(all_texts_positions)
-
-        # translated_texts = self.translator.translate_texts(filtered_texts)  # Replace with actual translation logic
-        translated_texts = filtered_texts  # For now, using filtered texts directly
-
-        # Load the original image in RGB for final overlay and saving
-        final_original_image = Image.open(self.original_image_path).convert('RGB')
-
-        # Apply blur and overlay text onto the original image
-        self.apply_blur(final_original_image, filtered_positions)
-        self.overlay_text(final_original_image, filtered_positions, translated_texts)
-
-        try:
-            final_original_image.save(self.translated_image_path)
-            self.document.translated_file.name = f'{self.document.pk}/translations/{self.translated_image_name}'
-            self.document.save()
-            logger.info(f"Final translated image saved at: {self.translated_image_path}")
-        except Exception as e:
-            logger.error(f"Failed to save final translated image: {e}")
-            raise
-
-        self.document.update_progress(1, 1)
-        return self.translated_image_path
-
+    def __str__(self):
+        return self.title
 
 # Example usage
-# python3 -m backend.services.image_translator
-if __name__ == '__main__':
-
-    import django
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'umetex_config.settings')
-    django.setup()
-
-    logger.setLevel(logging.DEBUG)  # Set the logging level to debug
-
-    # Create a console handler and set the level to debug
-    console_handler = logging.StreamHandler()
-    console_handler.setLevel(logging.DEBUG)
-
-    # Create a formatter and set it for the handler
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-    console_handler.setFormatter(formatter)
-
-    # Add the handler to the logger
-    logger.addHandler(console_handler)
+# python manage.py shell
+if __name__ == "__main__":
+    
+    # python manage.py shell
 
     from backend.models import Document
+    from backend.services import PDFTranslator
 
-    document = Document.objects.get(pk=236)  # Replace with actual document ID
-    image_translator = ImageTranslator(document)
-    translated_image_path = image_translator.translate_image()
-    print(f'Translated image saved at: {translated_image_path}')
+    # Получите экземпляр документа
+    document = Document.objects.get(pk=191) # 201
+
+    # Создайте экземпляр PDFTranslator и запустите перевод
+    translator = PDFTranslator(document)
+    translator.translate_pdf()
+    print(f'self.translated_file : {document.translated_file}')
