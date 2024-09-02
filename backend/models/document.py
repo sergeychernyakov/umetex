@@ -192,8 +192,8 @@ class Document(models.Model):
                 translator = PDFTranslator(self)
                 translator.translate_pdf()
             elif self.file_extension in ['.jpg', '.jpeg', '.png']:
-                from backend.services.image_translator import ImageTranslator
-                translator = ImageTranslator(self)
+                from backend.services.yandex_image_translator import YandexImageTranslator
+                translator = YandexImageTranslator(self)
                 translator.translate_image()
             else:
                 logger.error(f"Unsupported file type for translation: {self.file_extension}")

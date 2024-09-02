@@ -79,8 +79,20 @@ Feel free to contribute to the project by opening a pull request or submitting a
 
 
 ## Admin section
-ttp://localhost:8000/admin/
+http://localhost:8000/admin/
 admin: password123
+
+### Ngrok
+ngrok http 8000
+
+
+y0_AgAAAABAH-9lAATuwQAAAAEPpjDYAABCgVV6lnNJQ5R2EWOkNunywjYNPw
+
+client-trace-id: 3dce291b-9a99-46a4-a364-b36cd06b2d5e
+
+t1.9euelZqbmp6TlpSSj8bHkYzLlZuQm-3rnpWajpSMx5PJy8qezcqRypKKmsbl9PchGypJ-e8JYDzp3fT3YUknSfnvCWA86c3n9euelZqdk46Wmsmdl8uJi4ualZCXmu_8xeuelZqdk46Wmsmdl8uJi4ualZCXmg.RHC-VzZ-XXKlWVrX-4P97t4zWKWAFZLffpSwBf17L2P4NEByqViYAmkJSAcKblozddHePm4vuOh5EdAzcw_0Ag
+
+
 
 
 Plan:
@@ -106,8 +118,8 @@ Plan:
     + применить цвет шрифта
     + тестировать другие картинки
 
-  - добавить админку
-  - поправить историю переводов
+  + добавить админку
+  + поправить историю переводов
   - ngrok
 
 

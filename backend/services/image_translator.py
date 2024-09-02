@@ -277,12 +277,10 @@ class ImageTranslator:
         # Filter duplicate texts to keep only the most accurate ones
         filtered_texts, filtered_positions = self.filter_duplicate_texts(all_texts_positions)
 
-        translated_texts = filtered_texts
-
-        # if debug:
-        #     translated_texts = filtered_texts  # For now, using filtered texts directly
-        # else:
-        #     translated_texts = self.translator.translate_texts(filtered_texts)  # Replace with actual translation logic
+        if debug:
+            translated_texts = filtered_texts  # For now, using filtered texts directly
+        else:
+            translated_texts = self.translator.translate_texts(filtered_texts)  # Replace with actual translation logic
 
         # Load the original image in RGB for final overlay and saving
         final_original_image = Image.open(self.original_image_path).convert('RGB')
