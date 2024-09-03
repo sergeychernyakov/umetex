@@ -189,7 +189,7 @@ header .header_block .title_header h1 span {
 .history_file .table_history .document-table td {
   padding: 15px;
   font-family: Inter;
-  font-size: 24px;
+  font-size: 20px;
   font-weight: 400;
   line-height: 29.05px;
   text-align: left;
@@ -207,7 +207,7 @@ header .header_block .title_header h1 span {
 
 .history_file .table_history .document-table th:nth-child(2),
 .history_file .table_history .document-table td:nth-child(2) {
-  width: 15%;  /* Width for language column */
+  width: 18%;  /* Width for language column */
   max-width: 100px;
 }
 
@@ -218,7 +218,7 @@ header .header_block .title_header h1 span {
 
 .history_file .table_history .document-table th:nth-child(4),
 .history_file .table_history .document-table td:nth-child(4) {
-  width: 20%;  /* Width for date column */
+  width: 17%;  /* Width for date column */
 }
 
 .history_file .table_history .document-table th:nth-child(5),
@@ -232,7 +232,7 @@ header .header_block .title_header h1 span {
 
 .history_file .table_history .download-btn {
   font-family: Inter;
-  font-size: 24px;
+  font-size: 22px;
   font-weight: 400;
   line-height: 29.05px;
   text-align: center;
@@ -492,7 +492,7 @@ header .header_block .title_header h1 span {
   font-weight: 400;
   line-height: 29.05px;
   text-align: center;
-  color: #fff;
+  color: #000;
   display: flex;
   align-items: center;
 }
@@ -821,6 +821,49 @@ header .header_block .title_header h1 span {
 
   .file_upload .info_upload {
     margin-bottom: 80px;
+  }
+}
+
+@media (max-width: 600px) {
+  .history_file .table_history .document-table th,
+  .history_file .table_history .document-table td {
+    padding: 8px;
+    font-size: 16px; /* Reduced font size for better fit */
+    line-height: 22px;
+  }
+
+  .history_file .title_history h2 {
+    font-size: 26px; /* Reduced title size */
+  }
+
+  .pagination span,
+  .pagination a {
+    font-size: 16px; /* Smaller pagination text */
+  }
+
+  .history_file .table_history .document-table th:nth-child(3),
+  .history_file .table_history .document-table td:nth-child(3){
+    display: none; /* Hide file size and date columns */
+  }
+
+  .history_file .table_history .download-btn {
+    font-size: 16px;
+  }
+  .pagination span,
+  .pagination a {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 500px) {
+  .history_file .table_history .document-table th:nth-child(4),
+  .history_file .table_history .document-table td:nth-child(4){
+    display: none; /* Hide file size and date columns */
+  }
+
+  .pagination span,
+  .pagination a {
+    font-size: 11px;
   }
 }
 

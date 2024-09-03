@@ -138,7 +138,7 @@ STATICFILES_DIRS = [os.path.join(BASE_DIR, 'backend/static')]
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-SUPPORTED_FILE_FORMATS = ['.pdf', '.docx', '.jpg', '.jpeg', '.png']
+SUPPORTED_FILE_FORMATS = ['.pdf', '.docx']
 
 MAX_FILE_SIZE_MB = 5
 

@@ -4,7 +4,6 @@ import os
 import shutil
 import logging
 import json
-import django
 from django.conf import settings
 from django.db import models
 from django.db.models.signals import post_delete
@@ -191,10 +190,10 @@ class Document(models.Model):
 
                 translator = PDFTranslator(self)
                 translator.translate_pdf()
-            elif self.file_extension in ['.jpg', '.jpeg', '.png']:
-                from backend.services.yandex_image_translator import YandexImageTranslator
-                translator = YandexImageTranslator(self)
-                translator.translate_image()
+            # elif self.file_extension in ['.jpg', '.jpeg', '.png']:
+            #     from backend.services.yandex_image_translator import YandexImageTranslator
+            #     translator = YandexImageTranslator(self)
+            #     translator.translate_image()
             else:
                 logger.error(f"Unsupported file type for translation: {self.file_extension}")
                 raise ValueError(f"Unsupported file type for translation: {self.file_extension}")
@@ -212,7 +211,7 @@ class Document(models.Model):
         
         :return: A short version of the title with an ellipsis if truncated.
         """
-        max_length = 15
+        max_length = 20
         ext_length = 7  # Length to keep from the end, including the extension
         if len(self.title) > max_length:
             start = self.title[:max_length - ext_length]

@@ -108,7 +108,7 @@
                             <div class="block_translated">
                                 <div class="all_file">
                                     <div class="pdf_file" id="progressBar">
-                                        <p><img src="{% static 'img/File1.svg' %}" alt="File Icon"> <span
+                                        <p><img src="{% static 'img/File.svg' %}" alt="File Icon"> <span
                                                 id="translatingFileName">Report.pdf</span></p>
                                     </div>
                                     <div class="page_pdf">
@@ -163,7 +163,7 @@
                                 <tr>
                                     <th>Название</th>
                                     <th>Язык</th>
-                                    <th>Вес файла</th>
+                                    <th>Вес</th>
                                     <th>Дата</th>
                                     <th></th>
                                 </tr>
@@ -183,7 +183,7 @@
                                     <td>{{ document.uploaded_at|date:"d.m.Y" }}</td>
                                     <td>
                                         {% if document.translated_file %}
-                                        <a href="{{ document.translated_file.url }}" class="download-btn" target="_blank">Скачать перевод</a>
+                                        <a href="{{ document.translated_file.url }}" class="download-btn" target="_blank">Скачать</a>
                                         {% else %}
                                         <a href="{{ document.original_file.url }}" class="download-btn" target="_blank">Скачать</a>
                                         {% endif %}
