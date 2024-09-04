@@ -152,6 +152,7 @@
                 </div>
             </form>
 
+            {% if page_obj.object_list %}
             <div class="history_file">
                 <div class="container">
                     <div class="title_history">
@@ -206,6 +207,7 @@
                     </div>
                 </div>
             </div>
+            {% endif %}
         </main>
 
         <script src="{% static 'js/main.js' %}"></script>

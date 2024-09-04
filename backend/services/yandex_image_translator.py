@@ -57,7 +57,7 @@ class YandexImageTranslator:
             with open('.env', 'w') as file:
                 for line in lines:
                     if line.startswith('YANDEX_IAM_TOKEN'):
-                        file.write(f'YANDEX_IAM_TOKEN={new_token}\n')
+                        file.write(f"YANDEX_IAM_TOKEN='{new_token}'\n")
                     else:
                         file.write(line)
 
@@ -182,6 +182,9 @@ class YandexImageTranslator:
         :param text_positions: List of text positions to blur around.
         :param font_sizes: List of font sizes corresponding to each text position.
         """
+        if image.mode not in ("RGB", "L"):
+            image = image.convert("RGB")
+
         for (x, y, width, height), font_size in zip(text_positions, font_sizes):
             blur_margin = int(font_size * 0.5)
             blur_area = (
@@ -232,7 +235,7 @@ class YandexImageTranslator:
         extracted_texts, text_positions, font_sizes = self.extract_text(image)
 
         translated_texts = extracted_texts if debug else self.translator.translate_texts(extracted_texts)
-        # translated_texts = extracted_texts
+        #translated_texts = extracted_texts
 
 
         self.apply_blur(image, text_positions, font_sizes)

@@ -477,7 +477,7 @@ header .header_block .title_header h1 span {
 }
 
 .translating .translating_block .block_translated .all_file .pdf_file {
-  width: 40%;  /* Takes up the full width */
+  width: 0%;  /* Takes up the full width */
   padding: 30px 44px;
   display: flex;
   align-items: center;

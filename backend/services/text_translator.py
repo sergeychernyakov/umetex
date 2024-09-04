@@ -6,6 +6,7 @@ import logging
 from typing import List, Optional
 from openai import OpenAI
 from backend.models.app_config import AppConfig
+from backend.models.translation_phrase import TranslationPhrase
 
 logger = logging.getLogger(__name__)
 
@@ -13,8 +14,8 @@ class TextTranslator:
     def __init__(self, translation_language: str = 'RU', temperature: int = 0, max_tokens: int = 4096):
         """
         Initialize the TextTranslator with API key, temperature, and max tokens.
-        
-        :param api_key: API key for OpenAI.
+
+        :param translation_language: The target language for translation.
         :param temperature: Temperature for the OpenAI model.
         :param max_tokens: Max tokens for the OpenAI model.
         """
@@ -69,14 +70,24 @@ class TextTranslator:
         all_texts = [None] * len(texts)  # To store both translated and non-translated texts
 
         for i, text in enumerate(texts):
+            predefined_translation = self.get_predefined_translation(text)
             # Check if text is translatable (not just numbers or document codes)
             if non_translatable_pattern.match(text):
                 # If it's not translatable, add it directly to the results
                 all_texts[i] = text
                 logger.debug(f"Keeping non-translatable text segment as is: text_{i}: [{text}]")
+            elif predefined_translation:
+                # Apply original text format to predefined translation
+                formatted_translation = self.apply_format(predefined_translation, text)
+                all_texts[i] = formatted_translation
+                logger.debug(f"Using predefined translation for text_{i}: [{text}] -> [{formatted_translation}]")
             else:
                 translatable_texts.append(text)
                 indices_mapping.append(i)
+
+        # If there are no translatable texts left after checking predefined translations, return early
+        if not translatable_texts:
+            return all_texts
 
         # Shuffle the text segments to avoid order bias
         shuffled_indices = list(range(len(translatable_texts)))
@@ -121,6 +132,37 @@ class TextTranslator:
 
         return all_texts
 
+    def get_predefined_translation(self, text: str) -> Optional[str]:
+        """
+        Retrieve predefined translation for a given text if available.
+
+        :param text: The text to check for a predefined translation.
+        :return: Predefined translation or None if not found.
+        """
+        try:
+            phrase = TranslationPhrase.objects.get(
+                source_language='en',  # Change dynamically if required
+                target_language=self.translation_language,
+                source_phrase=text
+            )
+            return phrase.translated_phrase
+        except TranslationPhrase.DoesNotExist:
+            return None
+
+    def apply_format(self, translated_text: str, original_text: str) -> str:
+        """
+        Apply the format of the original text to the translated text.
+
+        :param translated_text: The translated text to format.
+        :param original_text: The original text to determine the format from.
+        :return: Formatted translated text.
+        """
+        if original_text.isupper():
+            return translated_text.upper()
+        elif original_text.istitle():
+            return translated_text.title()
+        else:
+            return translated_text.lower()
     def translate_text(self, prompt: str, message: str) -> str:
         """
         Translate text using the OpenAI API.

@@ -1,26 +1,31 @@
-# README.md
+### README.md
 
 # Umetex
 
-Umetex is a web-based application designed for translating medical documents. It utilizes the power of OpenAI's ChatGPT for translating documents while maintaining the original formatting, including tables and images. Users can upload PDF and Word documents or images, and Umetex translates the content into the selected language. The platform also includes an admin panel to monitor usage statistics, set translation terms, and manage the translation model.
+Umetex is a web-based application designed for translating medical documents. It leverages OpenAI's ChatGPT for natural language translation, while ensuring that the original formatting, including tables and images, is maintained. Users can upload a variety of document types, including PDFs, Word documents, and images, and select their desired translation language. The platform also includes an admin panel for managing translation settings, predefined phrases, and monitoring usage statistics.
 
 ## Features
 
-1. **Document Upload**: Users can upload PDF, Word, and image files (e.g., .jpg, .jpeg, .png) for translation.
-2. **AI-Powered Translation**: Uses OpenAI's ChatGPT to translate the content while preserving the document's original layout and formatting, including tables and images.
-3. **Cyrillic Support**: Automatically selects fonts that support Cyrillic characters for translations into languages that use the Cyrillic alphabet.
-4. **History and Progress Tracking**: Users can view the history of translated documents and check the translation progress in real-time.
-5. **Admin Panel**: Admins can track the number of translations performed, manage translation terminology, and switch the translation model.
-6. **Asynchronous Translation**: Translations are performed asynchronously, allowing users to continue using the app while documents are being processed.
+1. **Document Upload**: Supports uploading of PDF, Word, and image files (e.g., .jpg, .jpeg, .png) for translation.
+2. **AI-Powered Translation**: Utilizes OpenAI's ChatGPT to translate content while preserving document layout and formatting, including complex elements like tables and images.
+3. **Predefined Phrase Translation**: Allows administrators to set predefined translations for specific phrases to maintain consistency across translations.
+4. **Language and Font Support**: Automatically adjusts fonts to support various character sets, including Cyrillic, ensuring accurate representation in translated documents.
+5. **Translation History by IP Address**: Users can view the history of translations performed from their IP address, providing easy access to past translations.
+6. **Progress Tracking**: Displays real-time translation progress, including the current status and the number of pages processed, enhancing user experience.
+7. **Admin Panel**: Admin users can manage predefined translation phrases, monitor translation statistics, and configure translation models.
+8. **Asynchronous Processing**: Allows users to initiate a translation and continue using the application while the document is being processed in the background.
+9. **Environment Configuration**: Uses a `.env` file to securely manage sensitive configuration data like API keys and tokens.
+10. **Error Handling**: Provides detailed logging and error messages for troubleshooting, ensuring reliable operation and easier maintenance.
 
 ## Technologies Used
 
-- **Backend**: Python, Django
-- **Database**: MongoDB
-- **AI**: OpenAI's ChatGPT
-- **PDF Manipulation**: PyMuPDF (Fitz)
-- **Font Handling**: FontTools
-- **Environment Management**: dotenv
+- **Backend**: Python, Django for server-side logic and REST API management.
+- **Database**: MongoDB for storing document metadata and translation history.
+- **AI Integration**: OpenAI's ChatGPT for text translation and Yandex OCR for extracting text from images.
+- **PDF and Document Processing**: PyMuPDF (Fitz) for handling PDFs and `python-docx` for manipulating Word documents.
+- **Image Processing**: PIL (Python Imaging Library) for image manipulation tasks such as text overlay and blurring.
+- **Font Management**: FontTools for handling font-related tasks, ensuring compatibility with multiple languages and scripts.
+- **Environment Management**: Python-dotenv for handling environment variables securely.
 
 ## Setup
 
@@ -46,7 +51,7 @@ To set up the app locally, follow these steps:
     ```bash
     cp .env.example .env
     ```
-   Configure the `.env` file with the necessary settings, including `OPENAI_API_KEY`.
+   Update the `.env` file with necessary settings, including `OPENAI_API_KEY`, `YANDEX_IAM_TOKEN`, and `YANDEX_FOLDER_ID`.
 
 6. **Run the Django server**:
     ```bash
@@ -55,17 +60,21 @@ To set up the app locally, follow these steps:
 
 ## Usage
 
-1. **Upload Document**: Visit the main page of the app. Drag and drop a document or use the file picker to upload.
-2. **Select Language**: Choose the target translation language from the dropdown menu.
-3. **View History**: Check the history of your translations and download translated documents.
-4. **Admin Panel**: Access the admin panel to manage translation settings and view usage statistics.
+1. **Upload Document**: On the main page, upload a document by dragging and dropping it into the designated area or using the file picker.
+2. **Select Language**: Choose the language you wish to translate the document into from the available dropdown menu.
+3. **Start Translation**: Click the translation button to begin processing. Real-time progress will be shown.
+4. **View History**: Access your translation history filtered by your IP address to see past translations and download translated documents.
+5. **Admin Panel**: Admin users can manage predefined translation phrases, view usage statistics, and modify translation settings.
 
 ## Admin Panel
 
-- Accessible only to users with admin privileges.
-- Provides a dashboard for monitoring translation statistics.
-- Allows the setting of specific translation terms for consistency across documents.
-- Offers options to change the underlying translation model.
+- **URL**: [Admin Panel](http://localhost:8000/admin/)
+- **Default Credentials**: `admin: password123`
+- **Features**:
+  - View and manage translation history.
+  - Set predefined phrases for translation consistency.
+  - Monitor system usage and translation statistics.
+  - Adjust translation settings and models.
 
 ## Testing
 
@@ -75,58 +84,25 @@ The application has been tested on:
 
 ## Contribution
 
-Feel free to contribute to the project by opening a pull request or submitting an issue on GitHub. Ensure to follow the project's coding standards and include tests for any new functionality.
+Contributions are welcome! You can contribute by opening a pull request or submitting an issue on GitHub. Please adhere to the project's coding standards and include tests for any new features or bug fixes.
 
+## Additional Notes
 
-## Admin section
-http://localhost:8000/admin/
-admin: password123
+- **Ngrok for Public Access**: To make the local server accessible externally, use Ngrok:
+    ```bash
+    ngrok http 8000
+    ```
+- **Yandex IAM Token Management**: Refresh or create a new Yandex IAM token using the command:
+    ```bash
+    yc iam create-token
+    ```
 
-### Ngrok
-ngrok http 8000
+## Environment Configuration
 
+Update the `.env` file with the following variables:
 
-y0_AgAAAABAH-9lAATuwQAAAAEPpjDYAABCgVV6lnNJQ5R2EWOkNunywjYNPw
-
-client-trace-id: 3dce291b-9a99-46a4-a364-b36cd06b2d5e
-
-t1.9euelZqbmp6TlpSSj8bHkYzLlZuQm-3rnpWajpSMx5PJy8qezcqRypKKmsbl9PchGypJ-e8JYDzp3fT3YUknSfnvCWA86c3n9euelZqdk46Wmsmdl8uJi4ualZCXmu_8xeuelZqdk46Wmsmdl8uJi4ualZCXmg.RHC-VzZ-XXKlWVrX-4P97t4zWKWAFZLffpSwBf17L2P4NEByqViYAmkJSAcKblozddHePm4vuOh5EdAzcw_0Ag
-
-
-
-
-Plan:
- - перевод файла .pdf в фоновом режиме
-   + remove white background
-   + добавить языки
-   + исправить прогресс бар
-   + make pdf translations page by page
-   + внедрить шрифт с кириллицей
-   + попробовать перевод кириллицы
-   + исправить знаки вопроса
-   + использовать bold и т.д.
-   + проверить что шрифт найден корректно
-   + поправить ротацию текста
-   + поправить формат
-   + проверить шрифты на IJAAS-SCOPUS.pdf
-  + ограничить размер, тип файлов
-  + hande javascript errors
-
-  - перевод картинок
-    + распознает мало текста
-    + исправить размер шрифта
-    + применить цвет шрифта
-    + тестировать другие картинки
-
-  + добавить админку
-  + поправить историю переводов
-  - ngrok
-
-
-  - тестировать в разных браузерах, разрешениях
-  - тестировать на телефоне
-  - оптимизировать размер PDF
-
- - cleanup requirements.txt
- - update README
- - tests
+```bash
+OPENAI_API_KEY='your-openai-api-key'
+YANDEX_IAM_TOKEN='your-yandex-iam-token'
+YANDEX_FOLDER_ID='your-yandex-folder-id'
+```

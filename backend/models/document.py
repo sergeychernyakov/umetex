@@ -98,7 +98,11 @@ class Document(models.Model):
     original_file = models.FileField(upload_to='tmp/originals/')  # Path to the original file
     translated_file = models.FileField(upload_to='tmp/translations/', blank=True, null=True)  # Path to the translated file
     translation_language = models.CharField(max_length=5, choices=LANGUAGES_CHOICES)  # Language to translate into
+    ip_address = models.GenericIPAddressField(null=True, blank=True, verbose_name="IP Address")
     uploaded_at = models.DateTimeField(auto_now_add=True)  # Timestamp of when the document was uploaded
+
+    def __str__(self):
+        return f"{self.title} - {self.translation_language} - {self.ip_address}"
 
     def save(self, *args, **kwargs):
         """
@@ -169,7 +173,7 @@ class Document(models.Model):
         elif self.file_extension in ['.jpg', '.jpeg', '.png']:
             # Use ImageTranslator for image files
 
-            from backend.services.image_translator import ImageTranslator
+            from backend.services.image_translator_with_ocr import ImageTranslator
             translator = ImageTranslator(self)
 
             # from backend.services.image_translator_with_openai import ImageTranslatorWithOpenAI
@@ -190,10 +194,11 @@ class Document(models.Model):
 
                 translator = PDFTranslator(self)
                 translator.translate_pdf()
-            # elif self.file_extension in ['.jpg', '.jpeg', '.png']:
-            #     from backend.services.yandex_image_translator import YandexImageTranslator
-            #     translator = YandexImageTranslator(self)
-            #     translator.translate_image()
+            elif self.file_extension in ['.docx']:
+                from backend.services.word_translator import WordTranslator
+
+                translator = WordTranslator(self)
+                translator.translate_word()
             else:
                 logger.error(f"Unsupported file type for translation: {self.file_extension}")
                 raise ValueError(f"Unsupported file type for translation: {self.file_extension}")

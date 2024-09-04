@@ -139,7 +139,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         let fileName = data.file_name;
     
                         translatedPages.textContent = `${currentPage}/${totalPages}`;
-                        let progressPercentage = 40 + ((currentPage / totalPages) * 60);
+                        let progressPercentage = 0 + ((currentPage / totalPages) * 100);
                         progressBar.style.width = `${progressPercentage}%`;
     
                         if (currentPage >= totalPages) {

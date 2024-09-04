@@ -1,4 +1,4 @@
-# src/services/image_translator.py
+# src/services/image_translator_with_ocr.py
 
 import os
 import logging
@@ -11,7 +11,7 @@ import re
 # Set up logging
 logger = logging.getLogger(__name__)
 
-class ImageTranslator:
+class ImageTranslatorWithOcr:
     def __init__(self, document):
         """
         Initialize the ImageTranslator with a Document instance.

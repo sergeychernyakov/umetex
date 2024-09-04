@@ -21,7 +21,12 @@ class DocumentViewSet(viewsets.ModelViewSet):
 
 # View for rendering the main index.html page
 def index(request):
-    documents = Document.objects.all().order_by('-uploaded_at')
+    # Capture the current IP address
+    ip_address = request.META.get('REMOTE_ADDR')
+
+    # Filter documents by the current IP address
+    documents = Document.objects.filter(ip_address=ip_address).order_by('-uploaded_at')
+    
     paginator = Paginator(documents, 10)  # Show 10 documents per page
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
@@ -66,11 +71,15 @@ def upload_document(request):
                 'error': f'Размер файла превышает максимальный допустимый размер в {settings.MAX_FILE_SIZE_MB} MB.'
             })
 
+        # Capture the IP address
+        ip_address = request.META.get('REMOTE_ADDR')
+
         # Save the document and start translation
         new_document = Document(
             title=document.name,
             original_file=document,
-            translation_language=request.POST.get('language', 'en')  # Capture selected language
+            translation_language=request.POST.get('language', 'en'),  # Capture selected language
+            ip_address=ip_address  # Store the IP address
         )
         new_document.save()
 
