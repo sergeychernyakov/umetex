@@ -98,6 +98,7 @@ class Document(models.Model):
     original_file = models.FileField(upload_to='tmp/originals/')  # Path to the original file
     translated_file = models.FileField(upload_to='tmp/translations/', blank=True, null=True)  # Path to the translated file
     translation_language = models.CharField(max_length=5, choices=LANGUAGES_CHOICES)  # Language to translate into
+    source_language = models.CharField(max_length=5, choices=LANGUAGES_CHOICES, null=True, blank=True) 
     ip_address = models.GenericIPAddressField(null=True, blank=True, verbose_name="IP Address")
     uploaded_at = models.DateTimeField(auto_now_add=True)  # Timestamp of when the document was uploaded
 

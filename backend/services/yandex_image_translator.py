@@ -31,7 +31,7 @@ class YandexImageTranslator:
         :param translation_language: The language into which the image text should be translated.
         """
         self.translation_language = translation_language
-        self.translator = TextTranslator(translation_language)
+        self.translator = TextTranslator(translation_language, shorten_words=True)
         self.font_path = os.path.join(settings.BASE_DIR, 'fonts', 'Arial Bold.ttf')
         self.iam_token = os.getenv('YANDEX_IAM_TOKEN')
         self.folder_id = os.getenv('YANDEX_FOLDER_ID')
@@ -97,7 +97,7 @@ class YandexImageTranslator:
         font_size = 10
         max_font_size = 200
         font = ImageFont.truetype(self.font_path, int(font_size * scaling_factor))
-        temp_image = Image.new('RGB', (width, 100))
+        temp_image = Image.new('RGBA', (width, 100), (255, 255, 255, 0))  # Transparent background
         draw = ImageDraw.Draw(temp_image)
 
         while draw.textbbox((0, 0), text, font=font)[2] < width and font_size < max_font_size:
@@ -182,8 +182,8 @@ class YandexImageTranslator:
         :param text_positions: List of text positions to blur around.
         :param font_sizes: List of font sizes corresponding to each text position.
         """
-        if image.mode not in ("RGB", "L"):
-            image = image.convert("RGB")
+        if image.mode not in ("RGBA"):
+            image = image.convert("RGBA")
 
         for (x, y, width, height), font_size in zip(text_positions, font_sizes):
             blur_margin = int(font_size * 0.5)
@@ -197,12 +197,13 @@ class YandexImageTranslator:
             text_area = image.crop(blur_area)
             blurred_area = text_area.filter(ImageFilter.GaussianBlur(radius=20))
 
+            # Create a mask to maintain transparency in the blurred area
             mask = Image.new('L', blurred_area.size, 0)
             mask_draw = ImageDraw.Draw(mask)
-            mask_draw.ellipse((0, 0, blurred_area.size[0], blurred_area.size[1]), fill=235)
+            mask_draw.ellipse((0, 0, blurred_area.size[0], blurred_area.size[1]), fill=255)
 
-            blurred_area_with_oval = Image.composite(blurred_area, text_area, mask)
-            image.paste(blurred_area_with_oval, blur_area)
+            blurred_area_with_mask = Image.composite(blurred_area, text_area, mask)
+            image.paste(blurred_area_with_mask, blur_area, mask)  # Apply the mask to preserve transparency
 
     def overlay_text(self, image: Image, text_positions: list, original_texts: list, translated_texts: list, font_sizes: list) -> None:
         """
@@ -214,14 +215,16 @@ class YandexImageTranslator:
         :param translated_texts: List of translated texts to draw.
         :param font_sizes: List of font sizes for each text.
         """
-        draw = ImageDraw.Draw(image)
+        # Use RGBA image to preserve transparency
+        draw = ImageDraw.Draw(image, 'RGBA')
         for (x, y, width, height), translated_text, font_size in zip(text_positions, translated_texts, font_sizes):
             font = ImageFont.truetype(self.font_path, font_size)
             text_bbox = draw.textbbox((0, 0), translated_text, font=font)
             text_height = text_bbox[3] - text_bbox[1]
             y_offset = text_height / 2
 
-            draw.text((x, y - y_offset), translated_text, font=font, fill="black")
+            # Draw the text with transparency preserved
+            draw.text((x, y - y_offset), translated_text, font=font, fill=(0, 0, 0, 255))  # Fully opaque black text
             logger.debug(f"Applied translated text: '{translated_text}' at position ({x}, {y - y_offset}) with font size {font_size}")
 
     def translate_image(self, image: Image, debug=False) -> str:
@@ -234,10 +237,18 @@ class YandexImageTranslator:
         """
         extracted_texts, text_positions, font_sizes = self.extract_text(image)
 
+        # Check if any text was extracted
+        if not extracted_texts:
+            logger.info("No text found in the image.")
+            return
+
         translated_texts = extracted_texts if debug else self.translator.translate_texts(extracted_texts)
-        #translated_texts = extracted_texts
 
+        # Ensure the image has an alpha channel (RGBA)
+        if image.mode != 'RGBA':
+            image = image.convert('RGBA')
 
+        # Apply blur and overlay translated texts
         self.apply_blur(image, text_positions, font_sizes)
         self.overlay_text(image, text_positions, extracted_texts, translated_texts, font_sizes)
 

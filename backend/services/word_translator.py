@@ -92,6 +92,10 @@ class WordTranslator:
                 logger.debug(f"Processing image block in Word document")
                 self._process_image_block(rel.target_part.blob, translated_doc)
 
+        if self.translator.source_language:
+            logger.debug(f"Setting detected source language to the document: {self.translator.source_language}")
+            self.document.source_language = self.translator.source_language
+
         # Save the translated Word document
         translated_doc.save(self.translated_file_path)
         self.document.translated_file.name = f'{self.document.pk}/translations/{self.translated_file_name}'

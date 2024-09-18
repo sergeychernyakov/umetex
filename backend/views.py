@@ -9,6 +9,7 @@ from django.shortcuts import render
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core.paginator import Paginator
+from json.decoder import JSONDecodeError
 from .models import Document
 from .serializers import DocumentSerializer
 
@@ -109,5 +110,37 @@ def check_translation_progress(request, document_id):
         if progress_data.get("error"):
             return JsonResponse({"error": progress_data["error_message"]}, status=500)
         return JsonResponse(progress_data)
+    else:
+        return JsonResponse({"error": "Прогресс недоступен"}, status=404)
+
+
+import json
+from json.decoder import JSONDecodeError
+
+def check_translation_progress(request, document_id):
+    """
+    Check the translation progress of a specific document.
+
+    :param request: The HTTP request object.
+    :param document_id: The ID of the document to check progress for.
+    :return: JsonResponse with progress data or an error message.
+    """
+    progress_file = os.path.join(settings.MEDIA_ROOT, f'{document_id}', f'{document_id}_progress.json')
+
+    if os.path.exists(progress_file):
+        try:
+            with open(progress_file, 'r') as f:
+                progress_data = json.load(f)
+
+            # Check if there is an error in the progress data
+            if progress_data.get("error"):
+                return JsonResponse({"error": progress_data.get("error_message", "Unknown error occurred.")}, status=500)
+
+            return JsonResponse(progress_data)
+
+        except JSONDecodeError as e:
+            # Log the error and return an appropriate message
+            print(f"Failed to decode JSON from {progress_file}: {e}")
+
     else:
         return JsonResponse({"error": "Прогресс недоступен"}, status=404)

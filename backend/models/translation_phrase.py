@@ -7,7 +7,9 @@ class TranslationPhrase(models.Model):
     source_language = models.CharField(
         max_length=10,
         choices=Document.LANGUAGES_CHOICES,
-        verbose_name="Исходный язык"
+        verbose_name="Исходный язык",
+        blank=True,
+        null=True
     )
     target_language = models.CharField(
         max_length=10,

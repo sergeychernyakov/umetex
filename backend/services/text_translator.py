@@ -7,24 +7,29 @@ from typing import List, Optional
 from openai import OpenAI
 from backend.models.app_config import AppConfig
 from backend.models.translation_phrase import TranslationPhrase
+from backend.models.document import LANGUAGES
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 class TextTranslator:
-    def __init__(self, translation_language: str = 'RU', temperature: int = 0, max_tokens: int = 4096):
+    def __init__(self, translation_language: str = 'RU', temperature: int = 0, max_tokens: int = 4096, shorten_words: bool = False):
         """
         Initialize the TextTranslator with API key, temperature, and max tokens.
 
         :param translation_language: The target language for translation.
         :param temperature: Temperature for the OpenAI model.
         :param max_tokens: Max tokens for the OpenAI model.
+        :param shorten_words: Whether to shorten the translated words if they are too long.
         """
         self.translation_language = translation_language
+        self.source_language = None
         self.temperature = temperature
         self.max_tokens = max_tokens
         self.prompt = self.get_prompt()
         self.api_key = self.get_api_key()
         self.model = self.get_model()
+        self.shorten_words = shorten_words
         self.client = OpenAI(api_key=self.api_key)
 
     def get_model(self) -> str:
@@ -45,6 +50,7 @@ class TextTranslator:
     def get_prompt(self) -> str:
         """
         Get the translation prompt for the TextTranslator, replacing placeholders with real values.
+        If shorten_words is enabled, modify the prompt to request shorter translations.
         """
         try:
             raw_prompt = AppConfig.objects.get(key="text_translator_prompt").value
@@ -70,17 +76,19 @@ class TextTranslator:
         all_texts = [None] * len(texts)  # To store both translated and non-translated texts
 
         for i, text in enumerate(texts):
-            predefined_translation = self.get_predefined_translation(text)
+            predefined_translation = None
+            if not self.shorten_words:
+                predefined_translation = self.get_predefined_translation(text)
             # Check if text is translatable (not just numbers or document codes)
             if non_translatable_pattern.match(text):
                 # If it's not translatable, add it directly to the results
                 all_texts[i] = text
-                logger.debug(f"Keeping non-translatable text segment as is: text_{i}: [{text}]")
+                print(f"Keeping non-translatable text segment as is: text_{i}: [{text}]")
             elif predefined_translation:
                 # Apply original text format to predefined translation
                 formatted_translation = self.apply_format(predefined_translation, text)
                 all_texts[i] = formatted_translation
-                logger.debug(f"Using predefined translation for text_{i}: [{text}] -> [{formatted_translation}]")
+                print(f"Using predefined translation for text_{i}: [{text}] -> [{formatted_translation}]")
             else:
                 translatable_texts.append(text)
                 indices_mapping.append(i)
@@ -103,34 +111,101 @@ class TextTranslator:
         # Enhanced prompt to guide the translation process
         message = (
             "The following is a list of text segments extracted from a medical document. "
+            "Please determine the source language of the text first and include it in the format source_language: [{LANGUAGE_CODE}]. "
             "Translate each text segment into the target language, ensuring that each translation directly replaces the placeholder "
+            "Please ensure that the translated text is concise and close to the length of the original text."
             "and retains the same numbering format for consistency. Please only provide the translated text within the brackets.\n\n"
         )
+
+        if self.shorten_words:
+            message += "Important! If the translated word is significantly longer than the original word (2 times), shorten it using a hyphen. "
+            message += "Example: Pyloric (original), Пилорический (translated), shortened: Пил-кий.\n"
+            message += "If the translated word contains two or more words, shorten the first words with a period and the last one with a hyphen. "
+            message += "Example: Cardia (original), Кардиальная полость (translated), shortened: Кард. п-ть.\n"
+            message += "Example: INTERNAL STRUCTURE (original), ВНУТРЕННЯЯ СТРУКТУРА (translated), no need to shorten: ВНУТРЕННЯЯ СТРУКТУРА\n"
 
         for i, text in zip(shuffled_indices, shuffled_texts):
             original_index = indices_mapping[i]
             message += f"text_{original_index}: [{text}]\n"
-            logger.debug(f"Prepared shuffled text segment for translation: text_{original_index}: [{text}]")
+            print(f"Prepared shuffled text segment for translation: text_{original_index}: [{text}]")
 
         # Initialize the dictionary to hold the extracted data
         translated_text = self.translate_text(self.get_prompt(), message)
-        logger.debug(f"Translated text received: {translated_text}")
+        print(f"Translated text received: {translated_text}")
+
+        source_language_match = re.search(r'source_language:\s*\[\{?([A-Z-]+)\}?\]', translated_text)
+        if source_language_match:
+            detected_source_language = source_language_match.group(1)
+            print(f"Detected source language: {detected_source_language}")
+
+            # Matching the source language with LANGUAGES_CHOICES
+            self.source_language = self.match_source_language(detected_source_language)
+        else:
+            logger.warning(f"Source language didn't match: {source_language_match}' not found")
 
         # Extract and filter matches for each pattern, and strip spaces from the strings
         for key, pattern in patterns.items():
             matches = re.findall(pattern, translated_text)
-            logger.debug(f"Pattern for {key}: {pattern}, Matches found: {matches}")
+            print(f"Pattern for {key}: {pattern}, Matches found: {matches}")
 
             # Get the original index from the pattern key
             index = int(key.split('_')[1])
             non_empty_matches = [match.strip() for match in matches if match.strip()]
             if non_empty_matches:
-                all_texts[index] = non_empty_matches[0]
+                # Сохраняем переведённую фразу в базу
+                translation = non_empty_matches[0]
+                if not self.shorten_words:
+                    # Save phrase if it has 2, 3, or 4 words
+                    if 1 <= len(translation.split()) <= 7:
+                        self.save_translated_phrase(texts[index], translation)
+                        print(f"Translated text saved: [{texts[index]}] -> [{translation}]")
+                all_texts[index] = translation
             else:
                 print(f"No match found for text_{index}, keeping original text: {texts[index]}")
                 all_texts[index] = texts[index]  # Fallback to original if translation is missing
 
         return all_texts
+
+    def match_source_language(self, detected_language: str) -> Optional[str]:
+        """
+        Match the detected language from ChatGPT with LANGUAGES_CHOICES and return the code if found.
+
+        :param detected_language: The language code detected by ChatGPT.
+        :return: The matched language code or None if not found.
+        """
+        for code, name, encoding in LANGUAGES:
+            if code == detected_language:
+                return code
+        logger.warning(f"Source language '{detected_language}' not found in LANGUAGES_CHOICES.")
+        return None
+
+    def save_translated_phrase(self, original: str, translated: str) -> None:
+        """
+        Save the original and translated phrase to the database if the translation is new,
+        or update the translation if the phrase already exists without a translation.
+
+        :param original: The original text phrase.
+        :param translated: The translated text phrase.
+        """
+        # Try to find the phrase based on source_phrase and target_language
+        phrase, created = TranslationPhrase.objects.get_or_create(
+            source_phrase=original,
+            target_language=self.translation_language,
+        )
+
+        # Check if the phrase was newly created or if it lacks a translation
+        if created or phrase.translated_phrase is None:
+            phrase.translated_phrase = translated
+            phrase.source_language = self.source_language  # Assign the source language, if available
+            phrase.save()
+            print(f"Saved translated phrase to database: {original} -> {translated}")
+        # If phrase exists but source_language is missing, update source_language
+        elif phrase.source_language is None and self.source_language:
+            phrase.source_language = self.source_language
+            phrase.save()
+            print(f"Updated source_language for phrase: {original}")
+        else:
+            print(f"Phrase '{original}' already translated as '{phrase.translated_phrase}', skipping save.")
 
     def get_predefined_translation(self, text: str) -> Optional[str]:
         """
@@ -141,13 +216,15 @@ class TextTranslator:
         """
         try:
             phrase = TranslationPhrase.objects.get(
-                source_language='en',  # Change dynamically if required
                 target_language=self.translation_language,
                 source_phrase=text
             )
+            print(f"Predefined translation found: [{text}] -> [{phrase.translated_phrase}]")
             return phrase.translated_phrase
         except TranslationPhrase.DoesNotExist:
+            print(f"No predefined translation found for: [{text}]")
             return None
+
 
     def apply_format(self, translated_text: str, original_text: str) -> str:
         """
@@ -163,6 +240,7 @@ class TextTranslator:
             return translated_text.title()
         else:
             return translated_text.lower()
+
     def translate_text(self, prompt: str, message: str) -> str:
         """
         Translate text using the OpenAI API.
@@ -174,8 +252,8 @@ class TextTranslator:
         if len(prompt) == 0 or len(message) == 0:
             return ''
 
-        logger.debug(f"Sending prompt to OpenAI API: {prompt}")
-        logger.debug(f"Sending message to OpenAI API: {message}")
+        print(f"Sending prompt to OpenAI API: {prompt}")
+        print(f"Sending message to OpenAI API: {message}")
 
         response = self.client.chat.completions.create(
             model=self.model,
@@ -187,8 +265,10 @@ class TextTranslator:
             max_tokens=self.max_tokens
         )
 
+        print(response)
+
         translated_text = response.choices[0].message.content
-        logger.debug(f"Received response from OpenAI API: {translated_text}")
+        print(f"Received response from OpenAI API: {translated_text}")
 
         return translated_text
 

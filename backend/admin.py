@@ -7,8 +7,8 @@ from .models.translation_phrase import TranslationPhrase
 
 @admin.register(Document)
 class DocumentAdmin(admin.ModelAdmin):
-    list_display = ('title', 'translation_language', 'uploaded_at', 'original_file', 'translated_file')
-    search_fields = ('title', 'translation_language')
+    list_display = ('title', 'translation_language', 'source_language', 'uploaded_at', 'original_file', 'translated_file')
+    search_fields = ('title', 'translation_language', 'source_language')
     list_filter = ('translation_language', 'uploaded_at')
 
 @admin.register(AppConfig)

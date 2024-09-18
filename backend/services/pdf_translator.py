@@ -7,7 +7,15 @@ import logging
 import math
 from PIL import Image
 from io import BytesIO
+import hashlib
 from typing import Optional, Tuple
+
+
+import django
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'umetex_config.settings')
+django.setup()
+
+
 from django.conf import settings
 from backend.models import Document
 from backend.services.text_translator import TextTranslator
@@ -33,7 +41,27 @@ class PDFTranslator:
         self.translated_file_path = os.path.join(self.translations_dir, self.translated_file_name)
         self.translator = TextTranslator(self.document.translation_language)
         self.font_manager = FontManager(self.document.translation_language)
-        self.yandex_translator = YandexImageTranslator(self.document.translation_language)  # Initialize YandexImageTranslator
+        self.yandex_translator = YandexImageTranslator(self.document.translation_language)
+        self.image_cache = {}  # Cache for storing translated images
+
+    def is_big_text_block(self, block) -> bool:
+        """
+        Determine if a given text block is considered "big" based on the amount of text it contains.
+
+        :param block: A dictionary representing a text block.
+        :return: True if the block is considered "big", False otherwise.
+        """
+        # Criteria: Based on the number of characters in the block
+        num_chars_threshold = 50 # Example threshold for the number of characters in the block
+
+        # Extract all text from the block by concatenating text from spans
+        block_text = ''.join(span["text"] for line in block.get('lines', []) for span in line.get('spans', []))
+
+        # Check if the total number of characters in the block exceeds the threshold
+        if len(block_text) > num_chars_threshold:
+            return True
+
+        return False
 
     def translate_pdf(self) -> str:
         """
@@ -46,7 +74,7 @@ class PDFTranslator:
         self.total_pages = len(original_pdf)
         self.document.update_progress(0, self.total_pages)  # Update progress
 
-        for page_number in range(self.total_pages):
+        for page_number in range(1):
             self.current_page = page_number + 1
             logger.debug(f"Processing page {page_number + 1} of {self.total_pages}")
 
@@ -60,11 +88,19 @@ class PDFTranslator:
             # Extract and process each block on the page
             for block in text_dict['blocks']:
                 if block['type'] == 0:  # Text block
+                    block_text = ''
+                    big_text_block = self.is_big_text_block(block)
+                    
                     for line in block['lines']:
                         for span in line['spans']:
                             original_text = span["text"].strip()
-                            if original_text and re.search(r'[A-Za-z0-9]', original_text):
+                            block_text += original_text + ' '
+
+                            if not big_text_block and re.search(r'[A-Za-z0-9]', original_text):
                                 page_texts.append(original_text)
+
+                    if big_text_block and re.search(r'[A-Za-z0-9]', block_text):
+                        page_texts.append(block_text.strip())
 
                 elif block['type'] == 1:  # Image block
                     logger.debug(f"Processing image block on page {page_number + 1}")
@@ -72,11 +108,17 @@ class PDFTranslator:
 
             # Translate extracted texts from the current page
             translated_texts = self.translator.translate_texts(page_texts)
+            # translated_texts = page_texts
             # Apply translated texts back to the current page
             self._apply_translated_texts(text_dict, new_page, translated_texts)
 
             # Update progress after translating each page
             self.document.update_progress(self.current_page, self.total_pages)
+
+            if self.translator.source_language:
+                logger.debug(f"Setting detected source language to the document: {self.translator.source_language}")
+                self.document.source_language = self.translator.source_language
+                self.document.save()
 
         # Save the translated PDF
         logger.debug(f"Saving translated PDF to {self.translated_file_path}")
@@ -92,7 +134,10 @@ class PDFTranslator:
 
     def _process_image_block(self, block, new_page):
         """
-        Process an image block, translate it and insert back to the PDF page.
+        Process an image block, translate it, and insert back to the PDF page.
+        
+        Small images are skipped, and if the translation process returns None, 
+        the image is not inserted back into the PDF.
 
         :param block: The block containing image data.
         :param new_page: The page in the new PDF to insert the translated image into.
@@ -104,17 +149,41 @@ class PDFTranslator:
         # Convert the image data bytes into a PIL Image
         image = Image.open(BytesIO(image_data))  # Directly use image_data as bytes
 
-        # Save the image temporarily for translation
-        temp_image_path = os.path.join(self.translations_dir, "temp_image.png")
-        image.save(temp_image_path)
+        # Check the size of the image and skip if it's too small
+        min_size = 600  # Example minimum size (in pixels) for both width and height
+        logger.debug(f"image.width~:  {image.width}")
+        if image.width < min_size:
+            logger.debug(f"Skipping small image with dimensions {image.width}x{image.height}")
+            return
 
-        # Translate the image using YandexImageTranslator
-        # self.document.original_file.path = temp_image_path  # Update document with temp image path
-        translated_image_path = self.yandex_translator.translate_image(image)
+        # Generate a unique hash for the image to prevent translating the same image multiple times
+        image_hash = hashlib.md5(image_data).hexdigest()
+
+        # Check if the translated image already exists in the cache
+        if image_hash in self.image_cache:
+            logger.debug(f"Using cached translated image for hash: {image_hash}")
+            translated_image_path = self.image_cache[image_hash]
+        else:
+            # Save the image temporarily for translation
+            temp_image_path = os.path.join(self.translations_dir, f"temp_image_{image_hash}.png")
+            image.save(temp_image_path)
+
+            # Translate the image using YandexImageTranslator
+            # self.document.original_file.path = temp_image_path  # Update document with temp image path
+            translated_image_path = self.yandex_translator.translate_image(image)
+
+            # If no translation is available, skip insertion
+            if translated_image_path is None:
+                logger.debug("No text found in the image, skipping insertion.")
+                return
+
+            # Cache the translated image path
+            self.image_cache[image_hash] = translated_image_path
+            logger.debug(f"Translated and cached image with hash: {image_hash}")
 
         # Insert the translated image back into the PDF
         with Image.open(translated_image_path) as translated_image:
-            translated_image = translated_image.convert('RGB')
+            translated_image = translated_image.convert('RGBA')
             img_rect = fitz.Rect(block["bbox"])
             new_page.insert_image(img_rect, filename=translated_image_path)
         logger.debug(f"Inserted translated image at position {img_rect}")
@@ -130,60 +199,141 @@ class PDFTranslator:
         text_index = 0
         for block in text_dict['blocks']:
             if block['type'] == 0:  # Text block
+                # Берем bbox у блока, а не у span
+                big_text_block = self.is_big_text_block(block)
+                bbox = fitz.Rect(block['bbox'])  # Используем bbox непосредственно из блока
+                block_text = ''
+                first_span = None
+
+                # Собираем текст из всех spans в блоке и берем характеристики текста из первого span
                 for line in block['lines']:
                     for span in line['spans']:
+                        if not first_span:
+                            # Сохраняем характеристики из первого span
+                            first_span = span
+
                         original_text = span["text"].strip()
-                        bbox = fitz.Rect(span["bbox"])
-                        font_size = round(span.get("size", 12)) - 2
-                        color = self.normalize_color(span.get("color", 0))
-                        origin = span.get("origin", (0, 0))
-                        ascender = span.get("ascender", 0)
-                        descender = span.get("descender", 0)
-                        
-                        # Determine the rotation angle based on the direction
-                        dir_x, dir_y = line.get('dir', (1.0, 0.0))
-                        rotate_angle = self.calculate_rotation_angle(dir_x, dir_y)
+                        block_text += original_text + ' '
 
-                        # Get font name and path
-                        fontname = self.font_manager.clean_font_name(span.get("font", "Arial"))
-                        font_path = self.font_manager.find_font_path(fontname)
-
-                        # Check if the font file exists
-                        if not os.path.exists(font_path):
-                            logger.warning(f"Font '{fontname}' not found. Using Arial as default.")
-                            fontname = 'Arial'
-                            font_path = os.path.join(self.font_manager.fonts_dir, 'Arial.ttf')
-
-                        # Register the font dynamically
-                        new_page.insert_font(fontname=fontname, fontfile=font_path)
-
-                        if re.search(r'[A-Za-z0-9]', original_text):
+                        if not big_text_block and re.search(r'[A-Za-z0-9]', original_text):
+                            # Используем переведенный текст или оригинальный, если перевода нет
                             translated_text = translated_texts[text_index] if text_index < len(translated_texts) else original_text
                             text_index += 1
-                                
-                            fmt = "{:g} {:g} {:g} rg /{f:s} {s:g} Tf"
-                            da_str = fmt.format(*color, f='helv', s=font_size)
-                            new_page._add_redact_annot(quad=bbox, da_str=da_str)
 
-                            # Apply redactions and insert translated text with rotation
-                            new_page.apply_redactions()  # Apply changes per page
+                            bbox = fitz.Rect(span['bbox'])
 
-                            # Calculate the adjusted position using origin, ascender, and descender
-                            adjusted_origin = (origin[0], origin[1] - ascender + descender)
+                            # Вставляем текст в зависимости от размера блока
+                            self._apply_translated_text(new_page, span, translated_text, bbox, is_big_block=False, block=block)
 
-                            # Use the insert_text method directly on the page
-                            rc = new_page.insert_text(
-                                point=adjusted_origin,
-                                text=translated_text,
-                                fontsize=font_size,
-                                fontname=fontname,
-                                fontfile=font_path,
-                                color=color,
-                                rotate=rotate_angle,
-                                overlay=True
-                            )
-                            if rc < 0:
-                                logger.error(f"Failed to insert text at {bbox.tl} on page {page_number + 1}")
+                # Если есть текст в блоке, заменяем его на переведенный
+                if big_text_block and first_span and re.search(r'[A-Za-z0-9]', block_text):
+                    # Убираем лишние пробелы
+                    block_text = block_text.strip()
+
+                    # Используем переведенный текст или оригинальный, если перевода нет
+                    translated_text = translated_texts[text_index] if text_index < len(translated_texts) else block_text
+                    text_index += 1
+
+                    # Вставляем текст как большой блок
+                    self._apply_translated_text(new_page, first_span, translated_text, bbox, is_big_block=True, block=block)
+
+    def _apply_translated_text(self, new_page, first_span, translated_text, bbox, is_big_block, block):
+        """
+        Apply the translated text to the block using the properties of the first span in the block.
+
+        :param new_page: Page object from PyMuPDF where the text will be placed.
+        :param first_span: The first span of the text block that contains the text properties.
+        :param translated_text: The translated version of the text to replace the original one.
+        :param bbox: The bounding box of the text block.
+        :param is_big_block: Flag indicating whether the block is considered big or not.
+        :param block: The entire block from which we extract the rotation direction.
+        """
+        # Получаем все параметры текста из первого span
+
+        font_size = round(first_span.get("size", 11.5)) - 2
+        # print(f'font size: {font_size}, text: {translated_text}')
+
+        min_font_size = 6  # Минимальный размер шрифта, до которого уменьшаем
+        if not is_big_block and font_size > 9.5:
+            font_size = font_size - 1  # Ограничиваем минимальный размер шрифта
+
+        color = self.normalize_color(first_span.get("color", 0))
+        origin = first_span.get("origin", (0, 0))
+        ascender = first_span.get("ascender", 0)
+        descender = first_span.get("descender", 0)
+
+        # Определяем угол поворота
+        dir_x, dir_y = 1.0, 0.0  # Default values
+
+        # Extract 'dir' from the first line or span, fallback if necessary
+        if 'lines' in block and len(block['lines']) > 0:
+            line = block['lines'][0]  # Take the first line
+            dir_x, dir_y = line.get('dir', (1.0, 0.0))  # Get 'dir' from the line
+
+        print(f'dir_x: {dir_x},  dir_y: {dir_y}, text: {translated_text}')
+        rotate_angle = self.calculate_rotation_angle(dir_x, dir_y)
+
+        # Получаем шрифт и путь к файлу шрифта
+        fontname = self.font_manager.clean_font_name(first_span.get("font", "Arial"))
+        font_path = self.font_manager.find_font_path(fontname)
+
+        # Проверяем наличие файла шрифта
+        if not os.path.exists(font_path):
+            logger.warning(f"Font '{fontname}' not found. Using Arial as default.")
+            fontname = 'Arial'
+            font_path = os.path.join(self.font_manager.fonts_dir, 'Arial.ttf')
+
+        # Регистрируем шрифт
+        new_page.insert_font(fontname=fontname, fontfile=font_path)
+
+        # Форматирование для редактирования текста
+        fmt = "{:g} {:g} {:g} rg /{f:s} {s:g} Tf"
+        da_str = fmt.format(*color, f='helv', s=font_size)
+        new_page._add_redact_annot(quad=bbox, da_str=da_str)
+
+        # Применение редактирования и добавление переведенного текста с ротацией
+        new_page.apply_redactions()
+
+        # Попытка вставки текста с уменьшением шрифта при неудаче
+        rc = -1
+        while rc < 0 and font_size >= min_font_size:
+            # Если блок большой, используем insert_textbox
+            if is_big_block:
+                rc = new_page.insert_textbox(
+                    rect=bbox,  # Bounding box, где будет размещен текст
+                    buffer=translated_text,  # Текст для вставки
+                    fontsize=font_size,
+                    fontname=fontname,
+                    fontfile=font_path,
+                    color=color,
+                    align=fitz.TEXT_ALIGN_LEFT,  # Выравнивание текста
+                    rotate=rotate_angle
+                )
+            else:
+                # Рассчитываем скорректированную позицию текста
+                adjusted_origin = (origin[0], origin[1] - ascender + descender)
+
+                # Вставляем переведенный текст на страницу
+                rc = new_page.insert_text(
+                    point=adjusted_origin,
+                    text=translated_text,
+                    fontsize=font_size,
+                    fontname=fontname,
+                    fontfile=font_path,
+                    color=color,
+                    rotate=rotate_angle,
+                    overlay=True
+                )
+
+            # Если вставка текста не удалась, уменьшаем размер шрифта
+            if rc < 0:
+                font_size -= 1
+                logger.error(f"Failed to insert text at {bbox.tl} on page {self.current_page + 1}. Retrying with smaller font size: {font_size}.")
+                
+
+        # Если не удалось вставить текст после всех попыток, логируем это как ошибку
+        if rc < 0:
+            logger.error(f"Unable to insert text after reducing font size. Failed at {bbox.tl} on page {self.current_page + 1}")
 
     def calculate_rotation_angle(self, dir_x: float, dir_y: float) -> int:
         """
@@ -195,9 +345,14 @@ class PDFTranslator:
         """
         rotate_angle = math.degrees(math.atan2(dir_y, dir_x))
 
+        # Invert the angle to fix the incorrect rotation
+        rotate_angle = -rotate_angle
+
+        # Normalize the angle to [0, 360] degrees range
         if rotate_angle < 0:
             rotate_angle += 360
 
+        # Snap to the nearest valid rotation (0, 90, 180, 270)
         if rotate_angle < 45 or rotate_angle >= 315:
             return 0
         elif 45 <= rotate_angle < 135:
@@ -247,7 +402,7 @@ if __name__ == "__main__":
     from backend.models import Document
 
     # Get a document instance
-    document = Document.objects.get(pk=191)  # Replace with actual document ID
+    document = Document.objects.get(pk=378)  # Replace with actual document ID
 
     # Create an instance of PDFTranslator and translate the document
     pdf_translator = PDFTranslator(document)
