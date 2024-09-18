@@ -289,7 +289,7 @@ class PDFTranslator:
 
         font_size = round(first_span.get("size", 11.5)) - 2
 
-        min_font_size = 6  # Минимальный размер шрифта, до которого уменьшаем
+        min_font_size = 3  # Минимальный размер шрифта, до которого уменьшаем
         if not is_big_block and font_size > 9.5:
             font_size = font_size - 1  # Ограничиваем минимальный размер шрифта
 
