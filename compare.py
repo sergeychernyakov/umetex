@@ -51,8 +51,11 @@ class PDFTranslator:
         :param block: A dictionary representing a text block.
         :return: True if the block is considered "big", False otherwise.
         """
+        if self.is_starts_with_bullet(block):
+            return True
+
         # Criteria: Based on the number of characters in the block
-        num_chars_threshold = 50 # Example threshold for the number of characters in the block
+        num_chars_threshold = 200 # Example threshold for the number of characters in the block
 
         # Extract all text from the block by concatenating text from spans
         block_text = ''.join(span["text"] for line in block.get('lines', []) for span in line.get('spans', []))
@@ -61,6 +64,19 @@ class PDFTranslator:
         if len(block_text) > num_chars_threshold:
             return True
 
+        return False
+
+    def is_starts_with_bullet(self, block) -> bool:
+        """
+        Check if the text block starts with a bullet symbol.
+
+        :param block: A dictionary representing a text block.
+        :return: True if the block starts with a bullet, False otherwise.
+        """
+        for line in block.get('lines', []):
+            for span in line.get('spans', []):
+                if span["text"].strip().startswith("•"):
+                    return True
         return False
 
     def translate_pdf(self) -> str:
@@ -91,20 +107,27 @@ class PDFTranslator:
                     block_text = ''
                     big_text_block = self.is_big_text_block(block)
                     
+                    print(f'!!!!  is_big_text_block: {big_text_block}')
+                    
                     for line in block['lines']:
                         for span in line['spans']:
                             original_text = span["text"].strip()
                             block_text += original_text + ' '
-
+                           
                             if not big_text_block and re.search(r'[A-Za-z0-9]', original_text):
                                 page_texts.append(original_text)
+                                print(f'original_text: {original_text}')
 
                     if big_text_block and re.search(r'[A-Za-z0-9]', block_text):
+                        print(f'block_text: {block_text}')
                         page_texts.append(block_text.strip())
 
                 elif block['type'] == 1:  # Image block
                     logger.debug(f"Processing image block on page {page_number + 1}")
                     self._process_image_block(block, new_page)
+
+            # print('page textxs:')
+            # print(page_texts)
 
             # Translate extracted texts from the current page
             translated_texts = self.translator.translate_texts(page_texts)
@@ -223,23 +246,21 @@ class PDFTranslator:
                             bbox = fitz.Rect(span['bbox'])
 
                             # Вставляем текст в зависимости от размера блока
-                            self._apply_translated_text(new_page, span, translated_text, bbox, is_big_block=False)
+                            self._apply_translated_text(new_page, span, translated_text, bbox, is_big_block=False, block=block)
 
                 # Если есть текст в блоке, заменяем его на переведенный
                 if big_text_block and first_span and re.search(r'[A-Za-z0-9]', block_text):
                     # Убираем лишние пробелы
                     block_text = block_text.strip()
 
-                    bbox = fitz.Rect(block['bbox']) 
-
                     # Используем переведенный текст или оригинальный, если перевода нет
                     translated_text = translated_texts[text_index] if text_index < len(translated_texts) else block_text
                     text_index += 1
 
                     # Вставляем текст как большой блок
-                    self._apply_translated_text(new_page, first_span, translated_text, bbox, is_big_block=True)
+                    self._apply_translated_text(new_page, first_span, translated_text, bbox, is_big_block=True, block=block)
 
-    def _apply_translated_text(self, new_page, first_span, translated_text, bbox, is_big_block):
+    def _apply_translated_text(self, new_page, first_span, translated_text, bbox, is_big_block, block):
         """
         Apply the translated text to the block using the properties of the first span in the block.
 
@@ -248,6 +269,7 @@ class PDFTranslator:
         :param translated_text: The translated version of the text to replace the original one.
         :param bbox: The bounding box of the text block.
         :param is_big_block: Flag indicating whether the block is considered big or not.
+        :param block: The entire block from which we extract the rotation direction.
         """
         # Получаем все параметры текста из первого span
 
@@ -264,7 +286,12 @@ class PDFTranslator:
         descender = first_span.get("descender", 0)
 
         # Определяем угол поворота
-        dir_x, dir_y = first_span.get('dir', (1.0, 0.0))
+        dir_x, dir_y = 1.0, 0.0  # Default values
+
+        # Extract 'dir' from the first line or span, fallback if necessary
+        if 'lines' in block and len(block['lines']) > 0:
+            line = block['lines'][0]  # Take the first line
+            dir_x, dir_y = line.get('dir', (1.0, 0.0))  # Get 'dir' from the line
         rotate_angle = self.calculate_rotation_angle(dir_x, dir_y)
 
         # Получаем шрифт и путь к файлу шрифта
@@ -339,9 +366,14 @@ class PDFTranslator:
         """
         rotate_angle = math.degrees(math.atan2(dir_y, dir_x))
 
+        # Invert the angle to fix the incorrect rotation
+        rotate_angle = -rotate_angle
+
+        # Normalize the angle to [0, 360] degrees range
         if rotate_angle < 0:
             rotate_angle += 360
 
+        # Snap to the nearest valid rotation (0, 90, 180, 270)
         if rotate_angle < 45 or rotate_angle >= 315:
             return 0
         elif 45 <= rotate_angle < 135:

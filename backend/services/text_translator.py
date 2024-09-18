@@ -83,12 +83,12 @@ class TextTranslator:
             if non_translatable_pattern.match(text):
                 # If it's not translatable, add it directly to the results
                 all_texts[i] = text
-                print(f"Keeping non-translatable text segment as is: text_{i}: [{text}]")
+                logger.debug(f"Keeping non-translatable text segment as is: text_{i}: [{text}]")
             elif predefined_translation:
                 # Apply original text format to predefined translation
                 formatted_translation = self.apply_format(predefined_translation, text)
                 all_texts[i] = formatted_translation
-                print(f"Using predefined translation for text_{i}: [{text}] -> [{formatted_translation}]")
+                logger.debug(f"Using predefined translation for text_{i}: [{text}] -> [{formatted_translation}]")
             else:
                 translatable_texts.append(text)
                 indices_mapping.append(i)
@@ -127,16 +127,16 @@ class TextTranslator:
         for i, text in zip(shuffled_indices, shuffled_texts):
             original_index = indices_mapping[i]
             message += f"text_{original_index}: [{text}]\n"
-            print(f"Prepared shuffled text segment for translation: text_{original_index}: [{text}]")
+            logger.debug(f"Prepared shuffled text segment for translation: text_{original_index}: [{text}]")
 
         # Initialize the dictionary to hold the extracted data
         translated_text = self.translate_text(self.get_prompt(), message)
-        print(f"Translated text received: {translated_text}")
+        logger.debug(f"Translated text received: {translated_text}")
 
         source_language_match = re.search(r'source_language:\s*\[\{?([A-Z-]+)\}?\]', translated_text)
         if source_language_match:
             detected_source_language = source_language_match.group(1)
-            print(f"Detected source language: {detected_source_language}")
+            logger.debug(f"Detected source language: {detected_source_language}")
 
             # Matching the source language with LANGUAGES_CHOICES
             self.source_language = self.match_source_language(detected_source_language)
@@ -146,7 +146,7 @@ class TextTranslator:
         # Extract and filter matches for each pattern, and strip spaces from the strings
         for key, pattern in patterns.items():
             matches = re.findall(pattern, translated_text)
-            print(f"Pattern for {key}: {pattern}, Matches found: {matches}")
+            logger.debug(f"Pattern for {key}: {pattern}, Matches found: {matches}")
 
             # Get the original index from the pattern key
             index = int(key.split('_')[1])
@@ -158,10 +158,10 @@ class TextTranslator:
                     # Save phrase if it has 2, 3, or 4 words
                     if 1 <= len(translation.split()) <= 7:
                         self.save_translated_phrase(texts[index], translation)
-                        print(f"Translated text saved: [{texts[index]}] -> [{translation}]")
+                        logger.debug(f"Translated text saved: [{texts[index]}] -> [{translation}]")
                 all_texts[index] = translation
             else:
-                print(f"No match found for text_{index}, keeping original text: {texts[index]}")
+                logger.debug(f"No match found for text_{index}, keeping original text: {texts[index]}")
                 all_texts[index] = texts[index]  # Fallback to original if translation is missing
 
         return all_texts
@@ -198,14 +198,14 @@ class TextTranslator:
             phrase.translated_phrase = translated
             phrase.source_language = self.source_language  # Assign the source language, if available
             phrase.save()
-            print(f"Saved translated phrase to database: {original} -> {translated}")
+            logger.debug(f"Saved translated phrase to database: {original} -> {translated}")
         # If phrase exists but source_language is missing, update source_language
         elif phrase.source_language is None and self.source_language:
             phrase.source_language = self.source_language
             phrase.save()
-            print(f"Updated source_language for phrase: {original}")
+            logger.debug(f"Updated source_language for phrase: {original}")
         else:
-            print(f"Phrase '{original}' already translated as '{phrase.translated_phrase}', skipping save.")
+            logger.debug(f"Phrase '{original}' already translated as '{phrase.translated_phrase}', skipping save.")
 
     def get_predefined_translation(self, text: str) -> Optional[str]:
         """
@@ -219,10 +219,10 @@ class TextTranslator:
                 target_language=self.translation_language,
                 source_phrase=text
             )
-            print(f"Predefined translation found: [{text}] -> [{phrase.translated_phrase}]")
+            logger.debug(f"Predefined translation found: [{text}] -> [{phrase.translated_phrase}]")
             return phrase.translated_phrase
         except TranslationPhrase.DoesNotExist:
-            print(f"No predefined translation found for: [{text}]")
+            logger.debug(f"No predefined translation found for: [{text}]")
             return None
 
 
@@ -252,8 +252,8 @@ class TextTranslator:
         if len(prompt) == 0 or len(message) == 0:
             return ''
 
-        print(f"Sending prompt to OpenAI API: {prompt}")
-        print(f"Sending message to OpenAI API: {message}")
+        logger.debug(f"Sending prompt to OpenAI API: {prompt}")
+        logger.debug(f"Sending message to OpenAI API: {message}")
 
         response = self.client.chat.completions.create(
             model=self.model,
@@ -265,10 +265,9 @@ class TextTranslator:
             max_tokens=self.max_tokens
         )
 
-        print(response)
 
         translated_text = response.choices[0].message.content
-        print(f"Received response from OpenAI API: {translated_text}")
+        logger.debug(f"Received response from OpenAI API: {translated_text}")
 
         return translated_text
 
@@ -280,4 +279,4 @@ if __name__ == '__main__':
     translator = TextTranslator(api_key)
     example_texts = ["Hello world!", "12345"]
     translated_texts = translator.translate_texts(example_texts, "Spanish")
-    print(translated_texts)
+    logger.debug(translated_texts)

@@ -51,8 +51,11 @@ class PDFTranslator:
         :param block: A dictionary representing a text block.
         :return: True if the block is considered "big", False otherwise.
         """
+        if self.is_starts_with_bullet(block):
+            return True
+
         # Criteria: Based on the number of characters in the block
-        num_chars_threshold = 50 # Example threshold for the number of characters in the block
+        num_chars_threshold = 100 # Example threshold for the number of characters in the block
 
         # Extract all text from the block by concatenating text from spans
         block_text = ''.join(span["text"] for line in block.get('lines', []) for span in line.get('spans', []))
@@ -62,6 +65,38 @@ class PDFTranslator:
             return True
 
         return False
+
+    def is_starts_with_bullet(self, block) -> bool:
+        """
+        Check if the text block starts with a bullet symbol.
+
+        :param block: A dictionary representing a text block.
+        :return: True if the block starts with a bullet, False otherwise.
+        """
+        for line in block.get('lines', []):
+            for span in line.get('spans', []):
+                if span["text"].strip().startswith("•"):
+                    return True
+        return False
+
+    def split_bullet_points(self, block_text: str) -> str:
+        """
+        Split a block of text into multiple parts based on bullet points (•) and 
+        ensure there are line breaks between bullet points.
+
+        :param block_text: The full text block containing multiple bullet points.
+        :return: A formatted string with each bullet point on a new line.
+        """
+        # Split the text by the bullet character
+        bullet_points = block_text.split('•')
+        
+        # Filter out any empty strings, re-add the bullet symbol, and ensure each point is on a new line
+        bullet_points = ['• ' + point.strip() for point in bullet_points if point.strip()]
+        
+        # Join the bullet points back into a single string with line breaks
+        formatted_text = '\n'.join(bullet_points)
+        
+        return formatted_text
 
     def translate_pdf(self) -> str:
         """
@@ -74,7 +109,7 @@ class PDFTranslator:
         self.total_pages = len(original_pdf)
         self.document.update_progress(0, self.total_pages)  # Update progress
 
-        for page_number in range(1):
+        for page_number in range(self.total_pages):
             self.current_page = page_number + 1
             logger.debug(f"Processing page {page_number + 1} of {self.total_pages}")
 
@@ -95,7 +130,6 @@ class PDFTranslator:
                         for span in line['spans']:
                             original_text = span["text"].strip()
                             block_text += original_text + ' '
-
                             if not big_text_block and re.search(r'[A-Za-z0-9]', original_text):
                                 page_texts.append(original_text)
 
@@ -234,6 +268,9 @@ class PDFTranslator:
                     translated_text = translated_texts[text_index] if text_index < len(translated_texts) else block_text
                     text_index += 1
 
+                    if '•' in translated_text and translated_text.count('•') > 1:
+                        translated_text = self.split_bullet_points(translated_text)
+
                     # Вставляем текст как большой блок
                     self._apply_translated_text(new_page, first_span, translated_text, bbox, is_big_block=True, block=block)
 
@@ -251,7 +288,6 @@ class PDFTranslator:
         # Получаем все параметры текста из первого span
 
         font_size = round(first_span.get("size", 11.5)) - 2
-        # print(f'font size: {font_size}, text: {translated_text}')
 
         min_font_size = 6  # Минимальный размер шрифта, до которого уменьшаем
         if not is_big_block and font_size > 9.5:
@@ -269,8 +305,6 @@ class PDFTranslator:
         if 'lines' in block and len(block['lines']) > 0:
             line = block['lines'][0]  # Take the first line
             dir_x, dir_y = line.get('dir', (1.0, 0.0))  # Get 'dir' from the line
-
-        print(f'dir_x: {dir_x},  dir_y: {dir_y}, text: {translated_text}')
         rotate_angle = self.calculate_rotation_angle(dir_x, dir_y)
 
         # Получаем шрифт и путь к файлу шрифта
