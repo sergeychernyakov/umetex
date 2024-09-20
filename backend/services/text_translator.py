@@ -254,8 +254,6 @@ class TextTranslator:
         :return: Formatted translated text.
         """
         # Используем собственную функцию для проверки формата заголовка
-        print(f'capitalize text: {translated_text}, original_text: {original_text}, self.is_title_case(original_text): {self.is_title_case(original_text)}')
-
         if self.is_title_case(original_text) and self.translation_language == 'RU':
             pattern = re.compile(r'^(\W*\d+[\w-]*\s*)+', re.UNICODE)
             match = pattern.match(translated_text)
@@ -282,8 +280,8 @@ class TextTranslator:
         if len(prompt) == 0 or len(message) == 0:
             return ''
 
-        print(f"Sending prompt to OpenAI API: {prompt}")
-        print(f"Sending message to OpenAI API: {message}")
+        logger.debug(f"Sending prompt to OpenAI API: {prompt}")
+        logger.debug(f"Sending message to OpenAI API: {message}")
 
         response = self.client.chat.completions.create(
             model=self.model,
@@ -294,8 +292,6 @@ class TextTranslator:
             temperature=self.temperature,
             max_tokens=self.max_tokens
         )
-
-        print(response)
 
         translated_text = response.choices[0].message.content
         logger.debug(f"Received response from OpenAI API: {translated_text}")
