@@ -91,7 +91,7 @@ class PDFTranslator:
         bullet_points = block_text.split('•')
         
         # Filter out any empty strings, re-add the bullet symbol, and ensure each point is on a new line
-        bullet_points = ['• ' + point.strip() for point in bullet_points if point.strip()]
+        bullet_points = ['• ' + self.translator.apply_format(point.strip(), point.strip()) for point in bullet_points if point.strip()]
         
         # Join the bullet points back into a single string with line breaks
         formatted_text = '\n'.join(bullet_points)

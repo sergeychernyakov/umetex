@@ -113,7 +113,8 @@ class TextTranslator:
             "The following is a list of text segments extracted from a medical document. "
             "Please determine the source language of the text first and include it in the format source_language: [{LANGUAGE_CODE}]. "
             "Translate each text segment into the target language, ensuring that each translation directly replaces the placeholder "
-            "Please ensure that the translated text is concise and close to the length of the original text."
+            "Please ensure that the translated text is concise and close to the length of the original text, "
+            "maintaining the same capitalization (uppercase/lowercase) as in the original. "
             "and retains the same numbering format for consistency. Please only provide the translated text within the brackets.\n\n"
         )
 
@@ -225,6 +226,24 @@ class TextTranslator:
             logger.debug(f"No predefined translation found for: [{text}]")
             return None
 
+    def is_title_case(self, text: str) -> bool:
+        """
+        Custom function to check if the text is in title case.
+        It will ignore symbols and numbers at the beginning of the text.
+
+        :param text: The text to check.
+        :return: True if the text is in title case, ignoring the initial symbols and numbers.
+        """
+        # Регулярное выражение для нахождения первой текстовой части после символов и чисел
+        pattern = re.compile(r'[A-Za-zА-Яа-я]+')
+
+        # Находим первое текстовое слово после символов
+        match = pattern.search(text)
+        if match:
+            # Проверяем, написано ли слово в формате заголовка
+            word = match.group()
+            return word[0].isupper() and word[1:].islower()
+        return False
 
     def apply_format(self, translated_text: str, original_text: str) -> str:
         """
@@ -234,12 +253,23 @@ class TextTranslator:
         :param original_text: The original text to determine the format from.
         :return: Formatted translated text.
         """
-        if original_text.isupper():
-            return translated_text.upper()
-        elif original_text.istitle():
-            return translated_text.title()
-        else:
-            return translated_text.lower()
+        # Используем собственную функцию для проверки формата заголовка
+        print(f'capitalize text: {translated_text}, original_text: {original_text}, self.is_title_case(original_text): {self.is_title_case(original_text)}')
+
+        if self.is_title_case(original_text) and self.translation_language == 'RU':
+            pattern = re.compile(r'^(\W*\d+[\w-]*\s*)+', re.UNICODE)
+            match = pattern.match(translated_text)
+            if match:
+                matched_part = match.group()
+                remaining_text = translated_text[len(matched_part):].strip()
+                formatted_text = f"{matched_part}{remaining_text.capitalize()}"
+                return formatted_text
+            else:
+                return translated_text.capitalize()
+        elif original_text.istitle() and self.translation_language == 'RU':
+            return translated_text.capitalize()
+
+        return translated_text
 
     def translate_text(self, prompt: str, message: str) -> str:
         """
@@ -252,8 +282,8 @@ class TextTranslator:
         if len(prompt) == 0 or len(message) == 0:
             return ''
 
-        logger.debug(f"Sending prompt to OpenAI API: {prompt}")
-        logger.debug(f"Sending message to OpenAI API: {message}")
+        print(f"Sending prompt to OpenAI API: {prompt}")
+        print(f"Sending message to OpenAI API: {message}")
 
         response = self.client.chat.completions.create(
             model=self.model,
@@ -265,6 +295,7 @@ class TextTranslator:
             max_tokens=self.max_tokens
         )
 
+        print(response)
 
         translated_text = response.choices[0].message.content
         logger.debug(f"Received response from OpenAI API: {translated_text}")
