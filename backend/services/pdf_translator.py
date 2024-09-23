@@ -8,7 +8,7 @@ import math
 from PIL import Image
 from io import BytesIO
 import hashlib
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 
 
 import django
@@ -55,7 +55,7 @@ class PDFTranslator:
             return True
 
         # Criteria: Based on the number of characters in the block
-        num_chars_threshold = 100 # Example threshold for the number of characters in the block
+        num_chars_threshold = 50 # Example threshold for the number of characters in the block
 
         # Extract all text from the block by concatenating text from spans
         block_text = ''.join(span["text"] for line in block.get('lines', []) for span in line.get('spans', []))
@@ -98,6 +98,116 @@ class PDFTranslator:
         
         return formatted_text
 
+    def is_continuation(self, block1: dict, block2: dict, y_tolerance: float = 5.0, font_size_tolerance: float = 0.5) -> bool:
+        """
+        Determine if the second block is a continuation of the first block, 
+        considering the font size, font name, and vertical alignment between spans.
+
+        :param block1: The first text block.
+        :param block2: The second text block.
+        :param y_tolerance: The maximum vertical distance allowed between spans for them to be considered contiguous.
+        :param font_size_tolerance: The allowable tolerance for font size difference.
+        :return: True if the second block is a continuation of the first, False otherwise.
+        """
+        def get_non_empty_spans(block):
+            """
+            Extract non-empty spans from a block, filtering out spans with only whitespace.
+
+            :param block: The text block containing lines and spans.
+            :return: A list of non-empty spans.
+            """
+            return [
+                span for line in block.get('lines', []) 
+                for span in line.get('spans', []) 
+                if span['text'].strip()  # Отфильтровываем спаны без текста
+            ]
+
+        spans1 = get_non_empty_spans(block1)
+        spans2 = get_non_empty_spans(block2)
+
+        # Логирование начальной информации о блоках
+        logger.debug(f"Comparing Block1 BBox: {block1['bbox']}, Block2 BBox: {block2['bbox']}")
+
+        if not spans1 or not spans2:
+            logger.debug(f"One of the blocks has no non-empty spans. Cannot be continuation.")
+            return False  # Если один из блоков не содержит не пустых спанов, они не могут быть продолжением друг друга
+
+        # Проверка шрифтов и размеров шрифтов между всеми спанами двух блоков
+        for span1 in spans1:
+            for span2 in spans2:
+                font_size1, font_size2 = span1['size'], span2['size']
+                font_name1, font_name2 = span1['font'], span2['font']
+
+                # Проверяем, что имена шрифтов совпадают и размеры шрифтов равны с учетом допустимой погрешности
+                is_font_size_equal = abs(font_size1 - font_size2) < font_size_tolerance
+                is_font_name_equal = font_name1 == font_name2
+
+                # Логирование проверки шрифтов и размеров шрифтов
+                logger.debug(f"Comparing spans - Font Size1: {font_size1}, Font Size2: {font_size2}, Font Name1: {font_name1}, Font Name2: {font_name2}")
+                logger.debug(f"Font Size Equal: {is_font_size_equal}, Font Name Equal: {is_font_name_equal}")
+
+                # Если нашли хотя бы одну подходящую пару спанов, продолжаем проверку вертикальной непрерывности
+                if is_font_size_equal and is_font_name_equal:
+                    # Проверка вертикальной непрерывности между текущими span
+                    is_vertical_continuation = span2['bbox'][1] < span1['bbox'][3] + y_tolerance
+
+                    # Логирование результата вертикальной проверки
+                    logger.debug(f"Vertical Continuation Check - Span2 Top: {span2['bbox'][1]}, Span1 Bottom: {span1['bbox'][3]}, Tolerance: {y_tolerance}")
+                    logger.debug(f"Is Vertical Continuation: {is_vertical_continuation}")
+
+                    # Если вертикальная непрерывность выполнена, блоки считаются продолжением
+                    if is_vertical_continuation:
+                        logger.debug(f"Blocks are considered continuation.")
+                        return True
+
+        # Если не нашли ни одной подходящей пары спанов, блоки не являются продолжением
+        logger.debug(f"Blocks are not continuation.")
+        return False
+
+    def merge_text_blocks_with_continuation(self, blocks: List[dict], y_tolerance: float = 0.01) -> List[dict]:
+        """
+        Merge text blocks on the same page that are continuations of each other.
+
+        :param blocks: List of text blocks from the page.
+        :param y_tolerance: Maximum vertical distance between blocks to be considered for merging.
+        :return: List of merged blocks.
+        """
+        merged_blocks = []
+        current_block = None
+
+        for block in blocks:
+            # Проверяем, что у блока есть все нужные поля, иначе пропускаем
+            if 'type' not in block or 'lines' not in block or 'bbox' not in block:
+                continue
+
+            # Проверяем, является ли текущий блок начальным блоком для слияния
+            if current_block is None:
+                current_block = block
+            else:
+                # Проверяем, если текущий блок является продолжением предыдущего
+                if self.is_continuation(current_block, block, y_tolerance):
+                    # Объединяем линии и спаны, без добавления текста в block_text
+                    current_block['lines'].extend(block['lines'])
+
+                    # Обновляем нижнюю границу bbox текущего блока
+                    bbox_list = list(current_block['bbox'])
+                    bbox_list[3] = block['bbox'][3]  # Обновляем нижнюю границу bbox
+                    current_block['bbox'] = tuple(bbox_list)
+                else:
+                    # Если блоки не объединяются, добавляем текущий объединенный блок в список
+                    merged_blocks.append(current_block)
+                    # Переходим к следующему блоку
+                    current_block = block
+
+            # Сохраняем тип блока
+            current_block['type'] = block['type']
+
+        # Добавляем последний блок, если он не был объединен
+        if current_block is not None:
+            merged_blocks.append(current_block)
+
+        return merged_blocks
+
     def translate_pdf(self) -> str:
         """
         Translate the PDF by processing text and image blocks, inserting translated content into a new PDF.
@@ -120,13 +230,34 @@ class PDFTranslator:
             text_dict = original_page.get_text("dict")
             page_texts = []  # Reset text list for each page
 
+            # Extract and process text blocks
+            text_blocks = [block for block in text_dict['blocks'] if block['type'] == 0]
+            # Merge blocks that are smaller continuations of each other
+            merged_blocks = self.merge_text_blocks_with_continuation(text_blocks)
+
+            # Step 1: Remove all original text blocks using redaction annotations
+            for block in text_blocks:
+                bbox = fitz.Rect(block['bbox'])  # Get the bounding box of the block
+                font_size = block['lines'][0]['spans'][0]['size'] if block['lines'] and block['lines'][0]['spans'] else 12
+                color = (1, 1, 1)  # White color to cover the original text
+                fmt = "{:g} {:g} {:g} rg /{f:s} {s:g} Tf"
+                da_str = fmt.format(*color, f='helv', s=font_size)
+                new_page._add_redact_annot(quad=bbox, da_str=da_str)
+                logger.debug(f"Added redaction for original text block with bbox: {bbox}")
+
+            # Apply redactions to remove original texts
+            new_page.apply_redactions()
+
             # Extract and process each block on the page
-            for block in text_dict['blocks']:
+            for block in merged_blocks:
                 if block['type'] == 0:  # Text block
                     block_text = ''
                     big_text_block = self.is_big_text_block(block)
-                    
+                    bbox = fitz.Rect(block['bbox']) 
+
+                    lines = len(block['lines'])
                     for line in block['lines']:
+                        spans = len(line['spans'])
                         for span in line['spans']:
                             original_text = span["text"].strip()
                             block_text += original_text + ' '
@@ -136,7 +267,13 @@ class PDFTranslator:
                     if big_text_block and re.search(r'[A-Za-z0-9]', block_text):
                         page_texts.append(block_text.strip())
 
-                elif block['type'] == 1:  # Image block
+
+            # Prepare a new text dictionary with merged blocks for _apply_translated_texts
+            merged_text_dict = {"blocks": merged_blocks}
+
+            # Process image blocks
+            for block in text_dict['blocks']:
+                if block['type'] == 1:  # Image block
                     logger.debug(f"Processing image block on page {page_number + 1}")
                     self._process_image_block(block, new_page)
 
@@ -144,7 +281,7 @@ class PDFTranslator:
             translated_texts = self.translator.translate_texts(page_texts)
             # translated_texts = page_texts
             # Apply translated texts back to the current page
-            self._apply_translated_texts(text_dict, new_page, translated_texts)
+            self._apply_translated_texts(merged_text_dict, new_page, translated_texts)
 
             # Update progress after translating each page
             self.document.update_progress(self.current_page, self.total_pages)
@@ -286,12 +423,23 @@ class PDFTranslator:
         :param block: The entire block from which we extract the rotation direction.
         """
         # Получаем все параметры текста из первого span
-
-        font_size = round(first_span.get("size", 11.5)) -2
+        font_size = round(first_span.get("size", 11.5)) - 2
 
         min_font_size = 3  # Минимальный размер шрифта, до которого уменьшаем
         if not is_big_block and font_size > 9.5:
             font_size = font_size - 1  # Ограничиваем минимальный размер шрифта
+
+        if self.is_starts_with_bullet(block) and bbox.width < 250:
+            bbox.x1 += 100
+
+        # Начальная высота и ширина блока
+        initial_bbox_height = bbox.height
+        initial_bbox_width = bbox.width
+
+        # Коэффициент увеличения высоты и ширины блока
+        height_increase_step = initial_bbox_height * 0.05  # Увеличиваем высоту блока на 5%
+        width_increase_step = initial_bbox_width * 0.05    # Увеличиваем ширину блока на 5%
+        max_width = new_page.rect.width - 20 # Максимальная ширина с учетом отступа от края страницы
 
         color = self.normalize_color(first_span.get("color", 0))
         origin = first_span.get("origin", (0, 0))
@@ -360,10 +508,22 @@ class PDFTranslator:
                 )
 
             # Если вставка текста не удалась, уменьшаем размер шрифта
+            # if rc < 0:
+            #     font_size -= 1
+            #     logger.error(f"Failed to insert text at {bbox.tl} on page {self.current_page + 1}. Retrying with smaller font size: {font_size}.")
+
+            # Если вставка текста не удалась, уменьшаем размер шрифта или увеличиваем размеры блока
             if rc < 0:
-                font_size -= 1
-                logger.error(f"Failed to insert text at {bbox.tl} on page {self.current_page + 1}. Retrying with smaller font size: {font_size}.")
-                
+                # Если минимальный размер шрифта достигнут, проверяем возможность расширения блока
+                if bbox.width < max_width and self.is_starts_with_bullet(block):
+                    # Увеличиваем ширину блока, если есть место справа
+                    new_width = min(bbox.width + width_increase_step, max_width)
+                    bbox.x1 += new_width - bbox.width
+                    logger.error(f"Failed to insert text at {bbox.tl} on page {self.current_page + 1}. Increasing bbox width to {bbox.width}.")
+                else:
+                    # Если ширина блока максимальная, увеличиваем высоту блока
+                    bbox.y1 += height_increase_step  # Увеличиваем нижнюю границу bbox на шаг
+                    logger.error(f"Failed to insert text at {bbox.tl} on page {self.current_page + 1}. Increasing bbox height to {bbox.height}.")
 
         # Если не удалось вставить текст после всех попыток, логируем это как ошибку
         if rc < 0:
