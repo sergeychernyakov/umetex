@@ -1,5 +1,3 @@
-# backend/services/pdf_translator.py
-
 import os
 import re
 import fitz  # PyMuPDF
@@ -10,17 +8,17 @@ from io import BytesIO
 import hashlib
 from typing import Optional, Tuple, List
 
-
 import django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'umetex_config.settings')
 django.setup()
-
 
 from django.conf import settings
 from backend.models import Document
 from backend.services.text_translator import TextTranslator
 from backend.services.font_manager import FontManager
 from backend.services.yandex_image_translator import YandexImageTranslator  # Import YandexImageTranslator
+from spellchecker import SpellChecker  # Импортируем SpellChecker для проверки орфографии
+import pymorphy2  # Импортируем pymorphy2 для работы с морфологией
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +41,8 @@ class PDFTranslator:
         self.font_manager = FontManager(self.document.translation_language)
         self.yandex_translator = YandexImageTranslator(self.document.translation_language)
         self.image_cache = {}  # Cache for storing translated images
+        self.spell_checker = SpellChecker(language='ru')  # Инициализируем проверку орфографии для русского языка
+        self.morph = pymorphy2.MorphAnalyzer()  # Инициализируем морфологический анализатор
 
     def is_big_text_block(self, block) -> bool:
         """
@@ -177,7 +177,7 @@ class PDFTranslator:
 
         for block in blocks:
             # Проверяем, что у блока есть все нужные поля, иначе пропускаем
-            if 'type' not in block or 'lines' not in block or 'bbox' not in block:
+            if 'type' not in block или 'lines' not in block или 'bbox' not in block:
                 continue
 
             # Проверяем, является ли текущий блок начальным блоком для слияния
@@ -206,16 +206,35 @@ class PDFTranslator:
         if current_block is not None:
             merged_blocks.append(current_block)
 
-        # Печатаем объединенные блоки перед возвратом
-        # for i, merged_block in enumerate(merged_blocks, start=1):
-        #     print(f"Merged Block {i}:")
-        #     print(f"Type: {merged_block['type']}")
-        #     print(f"BBox: {merged_block['bbox']}")
-        #     print(f"Block Text: {merged_block.get('block_text', 'N/A')}")  # Печатаем block_text если есть
-        #     print(f"Lines Count: {len(merged_block['lines'])}")
-        #     print("=" * 40)
-
         return merged_blocks
+
+    # Вспомогательный метод для проверки орфографии текста
+    def spellcheck_text(self, text: str) -> str:
+        """
+        Check the spelling of the text and suggest corrections.
+
+        :param text: Input text to check for spelling errors.
+        :return: Corrected text with suggestions applied.
+        """
+        # Разбиваем текст на слова
+        words = text.split()
+        corrected_words = []
+
+        for word in words:
+            # Получаем начальную форму слова
+            normal_form = self.morph.parse(word)[0].normal_form
+
+            # Проверяем, есть ли слово в словаре или предполагаемые исправления
+            if self.spell_checker.unknown([normal_form]):
+                # Если слово неизвестно, берем первое исправление
+                corrected_word = self.spell_checker.correction(normal_form)
+                logger.debug(f"Correcting '{word}' to '{corrected_word}'")
+                corrected_words.append(corrected_word)
+            else:
+                corrected_words.append(word)
+
+        # Соединяем исправленные слова обратно в текст
+        return ' '.join(corrected_words)
 
     def translate_pdf(self) -> str:
         """
@@ -226,9 +245,9 @@ class PDFTranslator:
         original_pdf = fitz.open(self.original_pdf_path)
         translated_pdf = fitz.open()
         self.total_pages = len(original_pdf)
-        self.document.update_progress(0, 1)  # Update progress
+        self.document.update_progress(0, self.total_pages)  # Update progress
 
-        for page_number in range(2):
+        for page_number in range(self.total_pages):
             self.current_page = page_number + 1
             logger.debug(f"Processing page {page_number + 1} of {self.total_pages}")
 
@@ -265,22 +284,23 @@ class PDFTranslator:
                     bbox = fitz.Rect(block['bbox']) 
 
                     lines = len(block['lines'])
-                    print(f'is big_text_block: {big_text_block}, lines: {lines}, bbox: {bbox}')
                     for line in block['lines']:
                         spans = len(line['spans'])
-                        print(f'spans: {spans}')
                         for span in line['spans']:
                             original_text = span["text"].strip()
                             block_text += original_text + ' '
                             if not big_text_block and re.search(r'[A-Za-z0-9]', original_text):
                                 page_texts.append(original_text)
-                                print(f'original_text: {original_text}')
 
                     if big_text_block and re.search(r'[A-Za-z0-9]', block_text):
                         page_texts.append(block_text.strip())
-                        print(f'block_text: {block_text}')
 
+            # Step 2: Проверка орфографии для всех извлеченных текстов перед переводом
+            corrected_texts = [self.spellcheck_text(text) for text in page_texts]
 
+            # Теперь используем исправленные тексты для перевода
+            translated_texts = self.translator.translate_texts(corrected_texts)
+            
             # Prepare a new text dictionary with merged blocks for _apply_translated_texts
             merged_text_dict = {"blocks": merged_blocks}
 
@@ -290,11 +310,6 @@ class PDFTranslator:
                     logger.debug(f"Processing image block on page {page_number + 1}")
                     self._process_image_block(block, new_page)
 
-            print(page_texts)
-
-            # Translate extracted texts from the current page
-            translated_texts = self.translator.translate_texts(page_texts)
-            # translated_texts = page_texts
             # Apply translated texts back to the current page
             self._apply_translated_texts(merged_text_dict, new_page, translated_texts)
 
@@ -355,7 +370,6 @@ class PDFTranslator:
             image.save(temp_image_path)
 
             # Translate the image using YandexImageTranslator
-            # self.document.original_file.path = temp_image_path  # Update document with temp image path
             translated_image_path = self.yandex_translator.translate_image(image)
 
             # If no translation is available, skip insertion
@@ -412,7 +426,7 @@ class PDFTranslator:
                             self._apply_translated_text(new_page, span, translated_text, bbox, is_big_block=False, block=block)
 
                 # Если есть текст в блоке, заменяем его на переведенный
-                if big_text_block and first_span and re.search(r'[A-Za-z0-9]', block_text):
+                if big_text_block и first_span и re.search(r'[A-Za-z0-9]', block_text):
                     # Убираем лишние пробелы
                     block_text = block_text.strip()
 
@@ -420,7 +434,7 @@ class PDFTranslator:
                     translated_text = translated_texts[text_index] if text_index < len(translated_texts) else block_text
                     text_index += 1
 
-                    if '•' in translated_text and translated_text.count('•') > 1:
+                    if '•' in translated_text и translated_text.count('•') > 1:
                         translated_text = self.split_bullet_points(translated_text)
 
                     # Вставляем текст как большой блок
@@ -441,8 +455,11 @@ class PDFTranslator:
         font_size = round(first_span.get("size", 11.5)) - 2
 
         min_font_size = 3  # Минимальный размер шрифта, до которого уменьшаем
-        if not is_big_block and font_size > 9.5:
+        if not is_big_block и font_size > 9.5:
             font_size = font_size - 1  # Ограничиваем минимальный размер шрифта
+
+        if self.is_starts_with_bullet(block) и bbox.width < 250:
+            bbox.x1 += 100
 
         # Начальная высота и ширина блока
         initial_bbox_height = bbox.height
@@ -451,7 +468,7 @@ class PDFTranslator:
         # Коэффициент увеличения высоты и ширины блока
         height_increase_step = initial_bbox_height * 0.05  # Увеличиваем высоту блока на 5%
         width_increase_step = initial_bbox_width * 0.05    # Увеличиваем ширину блока на 5%
-        max_width = new_page.rect.width - 20  # Максимальная ширина с учетом отступа от края страницы
+        max_width = new_page.rect.width - 20 # Максимальная ширина с учетом отступа от края страницы
 
         color = self.normalize_color(first_span.get("color", 0))
         origin = first_span.get("origin", (0, 0))
@@ -462,7 +479,7 @@ class PDFTranslator:
         dir_x, dir_y = 1.0, 0.0  # Default values
 
         # Extract 'dir' from the first line or span, fallback if necessary
-        if 'lines' in block and len(block['lines']) > 0:
+        if 'lines' in block и len(block['lines']) > 0:
             line = block['lines'][0]  # Take the first line
             dir_x, dir_y = line.get('dir', (1.0, 0.0))  # Get 'dir' from the line
         rotate_angle = self.calculate_rotation_angle(dir_x, dir_y)
@@ -490,7 +507,7 @@ class PDFTranslator:
 
         # Попытка вставки текста с уменьшением шрифта при неудаче
         rc = -1
-        while rc < 0 and font_size >= min_font_size:
+        while rc < 0 и font_size >= min_font_size:
             # Если блок большой, используем insert_textbox
             if is_big_block:
                 rc = new_page.insert_textbox(
@@ -527,7 +544,7 @@ class PDFTranslator:
             # Если вставка текста не удалась, уменьшаем размер шрифта или увеличиваем размеры блока
             if rc < 0:
                 # Если минимальный размер шрифта достигнут, проверяем возможность расширения блока
-                if bbox.width < max_width and self.is_starts_with_bullet(block):
+                if bbox.width < max_width и self.is_starts_with_bullet(block):
                     # Увеличиваем ширину блока, если есть место справа
                     new_width = min(bbox.width + width_increase_step, max_width)
                     bbox.x1 += new_width - bbox.width
@@ -559,7 +576,7 @@ class PDFTranslator:
             rotate_angle += 360
 
         # Snap to the nearest valid rotation (0, 90, 180, 270)
-        if rotate_angle < 45 or rotate_angle >= 315:
+        if rotate_angle < 45 или rotate_angle >= 315:
             return 0
         elif 45 <= rotate_angle < 135:
             return 90
@@ -581,7 +598,7 @@ class PDFTranslator:
             g = (color >> 8) & 0xff
             b = color & 0xff
             return (r / 255.0, g / 255.0, b / 255.0)
-        elif isinstance(color, tuple) and len(color) == 3:
+        elif isinstance(color, tuple) и len(color) == 3:
             return tuple(c / 255.0 for c in color)
         return (0, 0, 0)  # Default to black if color is invalid
 
