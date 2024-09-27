@@ -10,20 +10,20 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         prompts = {
             "text_translator_prompt": "You are a helpful assistant for translating documents into {translation_language}.",
-            "image_translator_with_openai_prompt": (
-                f"You are a helpful assistant for translating medical images into {{translation_language}}. "
-                "Analyze the image and detect all text areas. For each text area, translate the text and provide the following details: "
-                "the x and y coordinates of the top-left corner of the text box, the width and height of the text box, "
-                "detect the font size (font-size) of the text area text, and the text color (text-color) and background color (text-background-color). "
-                "Return the translated text in the following structured JSON format: "
-                "{ 'translations': [{x: <x-coordinate>, y: <y-coordinate>, width: <box-width>, height: <box-height>, "
-                "font_size: <font-size>, text_color: (<R>, <G>, <B>), text_background_color: (<R>, <G>, <B>), "
-                "translated_text: '<translated text>'}], "
-                "'image_size': {'width': <image-width>, 'height': <image-height>}}. "
-                "Replace <x-coordinate>, <y-coordinate>, <box-width>, <box-height>, <font-size>, <text-color>, "
-                "<text-background-color>, <translated text>, <image-width>, and <image-height> with actual values. "
-                "Ensure colors are in the (R, G, B) format."
-            ),
+            # "image_translator_with_openai_prompt": (
+            #     f"You are a helpful assistant for translating medical images into {{translation_language}}. "
+            #     "Analyze the image and detect all text areas. For each text area, translate the text and provide the following details: "
+            #     "the x and y coordinates of the top-left corner of the text box, the width and height of the text box, "
+            #     "detect the font size (font-size) of the text area text, and the text color (text-color) and background color (text-background-color). "
+            #     "Return the translated text in the following structured JSON format: "
+            #     "{ 'translations': [{x: <x-coordinate>, y: <y-coordinate>, width: <box-width>, height: <box-height>, "
+            #     "font_size: <font-size>, text_color: (<R>, <G>, <B>), text_background_color: (<R>, <G>, <B>), "
+            #     "translated_text: '<translated text>'}], "
+            #     "'image_size': {'width': <image-width>, 'height': <image-height>}}. "
+            #     "Replace <x-coordinate>, <y-coordinate>, <box-width>, <box-height>, <font-size>, <text-color>, "
+            #     "<text-background-color>, <translated text>, <image-width>, and <image-height> with actual values. "
+            #     "Ensure colors are in the (R, G, B) format."
+            # ),
         }
 
         for key, value in prompts.items():

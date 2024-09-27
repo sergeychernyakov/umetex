@@ -165,30 +165,6 @@ class Document(models.Model):
         Perform translation on the document using either the PDFTranslator or ImageTranslator class,
         depending on the type of the original file.
         """
-        if self.file_extension == '.pdf':
-            from backend.services.pdf_translator import PDFTranslator
-
-            # Use PDFTranslator for PDF files
-            translator = PDFTranslator(self)
-            translator.translate_pdf()
-        elif self.file_extension in ['.jpg', '.jpeg', '.png']:
-            # Use ImageTranslator for image files
-
-            from backend.services.image_translator_with_ocr import ImageTranslator
-            translator = ImageTranslator(self)
-
-            # from backend.services.image_translator_with_openai import ImageTranslatorWithOpenAI
-            # translator = ImageTranslatorWithOpenAI(self)
-            translator.translate_image()
-        else:
-            logger.error(f"Unsupported file type for translation: {self.file_extension}")
-            raise ValueError(f"Unsupported file type for translation: {self.file_extension}")
-
-    def translate(self):
-        """
-        Perform translation on the document using either the PDFTranslator or ImageTranslator class,
-        depending on the type of the original file.
-        """
         try:
             if self.file_extension == '.pdf':
                 from backend.services.pdf_translator import PDFTranslator

@@ -3,11 +3,12 @@
 import re
 import random
 import logging
-from typing import List, Optional
+from typing import List, Optional, Dict
 from openai import OpenAI
 from backend.models.app_config import AppConfig
 from backend.models.translation_phrase import TranslationPhrase
 from backend.models.document import LANGUAGES
+import ahocorasick
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -36,7 +37,7 @@ class TextTranslator:
         try:
             return AppConfig.objects.get(key="openai_model").value
         except AppConfig.DoesNotExist:
-            return "gpt-4o"  # Default value
+            return "gpt-4-turbo"  # Default value
 
     def get_api_key(self) -> str:
         """
@@ -58,6 +59,40 @@ class TextTranslator:
             return raw_prompt.format(translation_language=self.translation_language)
         except AppConfig.DoesNotExist:
             return f"You are a helpful assistant for translating documents into {self.translation_language}."
+
+    def find_phrases_in_combined_text(self, texts: List[str]) -> Dict[str, Optional[str]]:
+        """
+        Find all phrases from TranslationPhrase in the combined text of shuffled_texts using Aho-Corasick algorithm.
+
+        :param texts: List of shuffled text segments.
+        :return: Dictionary of found phrases with their translations (if available).
+        """
+        # Приводим весь объединенный текст к нижнему регистру
+        combined_text = " ".join(texts).lower()
+
+        # Создаем автомат Aho-Corasick и заполняем его фразами
+        automaton = ahocorasick.Automaton()
+        phrases = TranslationPhrase.objects.filter(target_language=self.translation_language)
+
+        # Добавляем фразы в автомат
+        for phrase in phrases:
+            lower_phrase = phrase.source_phrase.lower()
+            automaton.add_word(lower_phrase, (lower_phrase, phrase.translated_phrase))
+        
+        # Создаем структуру автомата
+        automaton.make_automaton()
+
+        # Словарь для хранения найденных фраз и их переводов
+        found_phrases = {}
+
+        # Ищем все фразы в объединенном тексте
+        for end_index, (found_phrase, translation) in automaton.iter(combined_text):
+            # Проверяем, была ли фраза уже найдена, чтобы избежать дубликатов
+            if found_phrase not in found_phrases:
+                found_phrases[found_phrase] = translation
+                # logger.debug(f"Found phrase in combined text: {found_phrase} -> {translation}")
+
+        return found_phrases
 
     def translate_texts(self, texts: List[str]) -> List[Optional[str]]:
         """
@@ -102,6 +137,10 @@ class TextTranslator:
         random.shuffle(shuffled_indices)
         shuffled_texts = [translatable_texts[i] for i in shuffled_indices]
 
+        # Ищем все фразы из базы данных в объединенном тексте shuffled_texts
+        found_phrases = self.find_phrases_in_combined_text(shuffled_texts)
+        logger.debug(f"<<<<< Found phrases in combined text: {found_phrases}")
+
         # Create patterns for extracted data
         patterns = {
             f"text_{indices_mapping[i]}": rf"text_{indices_mapping[i]}: \[([^\]]*?)\]" 
@@ -124,6 +163,13 @@ class TextTranslator:
             message += "If the translated word contains two or more words, shorten the first words with a period and the last one with a hyphen. "
             message += "Example: Cardia (original), Кардиальная полость (translated), shortened: Кард. п-ть.\n"
             message += "Example: INTERNAL STRUCTURE (original), ВНУТРЕННЯЯ СТРУКТУРА (translated), no need to shorten: ВНУТРЕННЯЯ СТРУКТУРА\n"
+
+        # Добавляем найденные фразы в message
+        if found_phrases:
+            message += "Use those phrases for the translation:\n"
+            for phrase, translation in found_phrases.items():
+                message += f"{phrase}: [{translation}]\n"
+            message += "\n"  # Разделитель между найденными фразами и основным текстом
 
         for i, text in zip(shuffled_indices, shuffled_texts):
             original_index = indices_mapping[i]

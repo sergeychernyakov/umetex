@@ -126,7 +126,7 @@ class PDFTranslator:
         spans2 = get_non_empty_spans(block2)
 
         # Логирование начальной информации о блоках
-        logger.debug(f"Comparing Block1 BBox: {block1['bbox']}, Block2 BBox: {block2['bbox']}")
+        # logger.debug(f"Comparing Block1 BBox: {block1['bbox']}, Block2 BBox: {block2['bbox']}")
 
         if not spans1 or not spans2:
             logger.debug(f"One of the blocks has no non-empty spans. Cannot be continuation.")
@@ -143,8 +143,8 @@ class PDFTranslator:
                 is_font_name_equal = font_name1 == font_name2
 
                 # Логирование проверки шрифтов и размеров шрифтов
-                logger.debug(f"Comparing spans - Font Size1: {font_size1}, Font Size2: {font_size2}, Font Name1: {font_name1}, Font Name2: {font_name2}")
-                logger.debug(f"Font Size Equal: {is_font_size_equal}, Font Name Equal: {is_font_name_equal}")
+                # logger.debug(f"Comparing spans - Font Size1: {font_size1}, Font Size2: {font_size2}, Font Name1: {font_name1}, Font Name2: {font_name2}")
+                # logger.debug(f"Font Size Equal: {is_font_size_equal}, Font Name Equal: {is_font_name_equal}")
 
                 # Если нашли хотя бы одну подходящую пару спанов, продолжаем проверку вертикальной непрерывности
                 if is_font_size_equal and is_font_name_equal:
@@ -152,16 +152,16 @@ class PDFTranslator:
                     is_vertical_continuation = span2['bbox'][1] < span1['bbox'][3] + y_tolerance
 
                     # Логирование результата вертикальной проверки
-                    logger.debug(f"Vertical Continuation Check - Span2 Top: {span2['bbox'][1]}, Span1 Bottom: {span1['bbox'][3]}, Tolerance: {y_tolerance}")
-                    logger.debug(f"Is Vertical Continuation: {is_vertical_continuation}")
+                    # logger.debug(f"Vertical Continuation Check - Span2 Top: {span2['bbox'][1]}, Span1 Bottom: {span1['bbox'][3]}, Tolerance: {y_tolerance}")
+                    # logger.debug(f"Is Vertical Continuation: {is_vertical_continuation}")
 
                     # Если вертикальная непрерывность выполнена, блоки считаются продолжением
                     if is_vertical_continuation:
-                        logger.debug(f"Blocks are considered continuation.")
+                        # logger.debug(f"Blocks are considered continuation.")
                         return True
 
         # Если не нашли ни одной подходящей пары спанов, блоки не являются продолжением
-        logger.debug(f"Blocks are not continuation.")
+        # logger.debug(f"Blocks are not continuation.")
         return False
 
     def merge_text_blocks_with_continuation(self, blocks: List[dict], y_tolerance: float = 0.01) -> List[dict]:
@@ -243,7 +243,7 @@ class PDFTranslator:
                 fmt = "{:g} {:g} {:g} rg /{f:s} {s:g} Tf"
                 da_str = fmt.format(*color, f='helv', s=font_size)
                 new_page._add_redact_annot(quad=bbox, da_str=da_str)
-                logger.debug(f"Added redaction for original text block with bbox: {bbox}")
+                # logger.debug(f"Added redaction for original text block with bbox: {bbox}")
 
             # Apply redactions to remove original texts
             new_page.apply_redactions()
