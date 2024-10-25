@@ -321,7 +321,7 @@ class PDFTranslator:
         image = Image.open(BytesIO(image_data))  # Directly use image_data as bytes
 
         # Check the size of the image and skip if it's too small
-        min_size = 600  # Example minimum size (in pixels) for both width and height
+        min_size = 350  # Example minimum size (in pixels) for both width and height
         logger.debug(f"image.width~:  {image.width}")
         if image.width < min_size:
             logger.debug(f"Skipping small image with dimensions {image.width}x{image.height}")
@@ -422,6 +422,10 @@ class PDFTranslator:
         :param is_big_block: Flag indicating whether the block is considered big or not.
         :param block: The entire block from which we extract the rotation direction.
         """
+        if not self.is_bbox_valid(bbox):
+            logger.error(f"Invalid bbox encountered: {bbox}. Skipping text insertion.")
+            return
+
         # Получаем все параметры текста из первого span
         font_size = round(first_span.get("size", 11.5)) - 2
 
@@ -556,6 +560,26 @@ class PDFTranslator:
         elif 225 <= rotate_angle < 315:
             return 270
 
+    def is_bbox_valid(self, bbox: fitz.Rect) -> bool:
+        """
+        Validate that the bounding box is finite and has positive width and height.
+
+        :param bbox: fitz.Rect object representing the bounding box.
+        :return: True if bbox is valid, False otherwise.
+        """
+        if not all(math.isfinite(coord) for coord in bbox):
+            logger.error(f"Bounding box has non-finite coordinates: {bbox}")
+            return False
+
+        width = bbox.width
+        height = bbox.height
+
+        if width <= 0 or height <= 0:
+            logger.error(f"Bounding box has non-positive dimensions: width={width}, height={height}")
+            return False
+
+        return True
+
     @staticmethod
     def normalize_color(color: Optional[int]) -> Tuple[float, float, float]:
         """
@@ -596,7 +620,7 @@ if __name__ == "__main__":
     from backend.models import Document
 
     # Get a document instance
-    document = Document.objects.get(pk=378)  # Replace with actual document ID
+    document = Document.objects.get(pk=391)  # Replace with actual document ID
 
     # Create an instance of PDFTranslator and translate the document
     pdf_translator = PDFTranslator(document)

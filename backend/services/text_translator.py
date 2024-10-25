@@ -37,7 +37,7 @@ class TextTranslator:
         try:
             return AppConfig.objects.get(key="openai_model").value
         except AppConfig.DoesNotExist:
-            return "gpt-4-turbo"  # Default value
+            return "gpt-4o"  # Default value o1-preview and o1-mini
 
     def get_api_key(self) -> str:
         """
@@ -149,6 +149,7 @@ class TextTranslator:
 
         # Enhanced prompt to guide the translation process
         message = (
+            "The terminology used should correspond to the established practice of application in the relevant field of professional activity. "
             "The following is a list of text segments extracted from a medical document. "
             "Please determine the source language of the text first and include it in the format source_language: [{LANGUAGE_CODE}]. "
             "Translate each text segment into the target language, ensuring that each translation directly replaces the placeholder "
@@ -326,8 +327,8 @@ class TextTranslator:
         if len(prompt) == 0 or len(message) == 0:
             return ''
 
-        logger.debug(f"Sending prompt to OpenAI API: {prompt}")
-        logger.debug(f"Sending message to OpenAI API: {message}")
+        print(f"Sending prompt to OpenAI API: {prompt}")
+        print(f"Sending message to OpenAI API: {message}")
 
         response = self.client.chat.completions.create(
             model=self.model,
